@@ -45,14 +45,17 @@ impl<Item, const LENGTH: usize> Array for [Item; LENGTH]
 {
     const LENGTH: usize = LENGTH;
 
+    #[inline]
     fn into_array(self) -> [Item; Self::LENGTH]
     {
         self.into_iter().array_chunks().next().unwrap()
     }
+    #[inline]
     fn as_array(&self) -> &[Item; Self::LENGTH]
     {
         unsafe {std::mem::transmute(self)}
     }
+    #[inline]
     fn as_array_mut(&mut self) -> &mut [Item; Self::LENGTH]
     {
         unsafe {std::mem::transmute(self)}

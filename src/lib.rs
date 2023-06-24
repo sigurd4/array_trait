@@ -1,5 +1,7 @@
 #![feature(generic_const_exprs)]
 #![feature(iter_array_chunks)]
+#![feature(split_array)]
+#![feature(iter_next_chunk)]
 
 use std::{borrow::{Borrow, BorrowMut}, hash::Hash, slice::{Iter, IterMut}, ops::{Index, Range, RangeInclusive, RangeFrom, RangeTo, RangeToInclusive, IndexMut, RangeFull, Deref}};
 
@@ -40,6 +42,40 @@ where
     fn into_array(self) -> [Self::Item; Self::LENGTH];
     fn as_array(&self) -> &[Self::Item; Self::LENGTH];
     fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH];
+
+    fn split_array<const M: usize>(self) -> ([Self::Item; M], [Self::Item; Self::LENGTH - M])
+    {
+        let mut iter = self.into_iter();
+        unsafe {(iter.next_chunk().unwrap_unchecked(), iter.next_chunk().unwrap_unchecked())}
+    }
+    
+    #[inline]
+    fn split_array_ref2<const M: usize>(&self) -> (&[Self::Item; M], &[Self::Item; Self::LENGTH - M])
+    {
+        let (a, b) = (&self[..]).split_array_ref::<M>();
+        (a, b.split_array_ref::<{Self::LENGTH - M}>().0)
+    }
+    
+    #[inline]
+    fn split_array_mut2<const M: usize>(&mut self) -> (&mut [Self::Item; M], &mut [Self::Item; Self::LENGTH - M])
+    {
+        let (a, b) = (&mut self[..]).split_array_mut::<M>();
+        (a, b.split_array_mut::<{Self::LENGTH - M}>().0)
+    }
+    
+    #[inline]
+    fn rsplit_array_ref2<const M: usize>(&self) -> (&[Self::Item; Self::LENGTH - M], &[Self::Item; M])
+    {
+        let (a, b) = (&self[..]).rsplit_array_ref::<M>();
+        (a.split_array_ref::<{Self::LENGTH - M}>().0, b)
+    }
+    
+    #[inline]
+    fn rsplit_array_mut2<const M: usize>(&mut self) -> (&mut [Self::Item; Self::LENGTH - M], &mut [Self::Item; M])
+    {
+        let (a, b) = (&mut self[..]).rsplit_array_mut::<M>();
+        (a.split_array_mut::<{Self::LENGTH - M}>().0, b)
+    }
 }
 impl<Item, const LENGTH: usize> Array for [Item; LENGTH]
 {

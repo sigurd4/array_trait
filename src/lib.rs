@@ -3,7 +3,7 @@
 #![feature(split_array)]
 #![feature(iter_next_chunk)]
 
-use std::{borrow::{Borrow, BorrowMut}, hash::Hash, slice::{Iter, IterMut}, ops::{Index, Range, RangeInclusive, RangeFrom, RangeTo, RangeToInclusive, IndexMut, RangeFull, Deref}};
+use std::{borrow::{Borrow, BorrowMut}, slice::{Iter, IterMut}, ops::{Index, Range, RangeInclusive, RangeFrom, RangeTo, RangeToInclusive, IndexMut, RangeFull, Deref}};
 
 mod private
 {

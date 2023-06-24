@@ -43,18 +43,17 @@ where
 }
 impl<Item, const LENGTH: usize> Array for [Item; LENGTH]
 {
-    type Item = Item;
     const LENGTH: usize = LENGTH;
 
-    fn into_array(self) -> [Self::Item; Self::LENGTH]
+    fn into_array(self) -> [Item; Self::LENGTH]
     {
         self.into_iter().array_chunks().next().unwrap()
     }
-    fn as_array(&self) -> &[Self::Item; Self::LENGTH]
+    fn as_array(&self) -> &[Item; Self::LENGTH]
     {
         unsafe {std::mem::transmute(self)}
     }
-    fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH]
+    fn as_array_mut(&mut self) -> &mut [Item; Self::LENGTH]
     {
         unsafe {std::mem::transmute(self)}
     }

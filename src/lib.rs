@@ -3,7 +3,7 @@
 #![feature(split_array)]
 #![feature(iter_next_chunk)]
 
-use std::{borrow::{Borrow, BorrowMut}, slice::{Iter, IterMut}, ops::{Index, Range, RangeInclusive, RangeFrom, RangeTo, RangeToInclusive, IndexMut, RangeFull, Deref}};
+use std::{borrow::{Borrow, BorrowMut}, ops::{Index, Range, RangeInclusive, RangeFrom, RangeTo, RangeToInclusive, IndexMut, RangeFull, Deref}};
 
 mod private
 {
@@ -32,10 +32,10 @@ pub trait Array: private::Array
     + IndexMut<RangeTo<usize>>
     + IndexMut<RangeToInclusive<usize>>
     + IndexMut<RangeFull>
-where
+/*where
     for<'a> &'a Self: TryFrom<&'a [Self::Item]>
         + IntoIterator<Item = &'a Self::Item, IntoIter = Iter<'a, Self::Item>>,
-    for<'a> &'a mut Self: TryFrom<&'a mut [Self::Item]> + IntoIterator<Item = &'a mut Self::Item, IntoIter = IterMut<'a, Self::Item>>
+    for<'a> &'a mut Self: TryFrom<&'a mut [Self::Item]> + IntoIterator<Item = &'a mut Self::Item, IntoIter = IterMut<'a, Self::Item>>*/
 {
     const LENGTH: usize;
 

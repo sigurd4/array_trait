@@ -11,6 +11,8 @@
 #![feature(generic_arg_infer)]
 #![feature(const_closures)]
 #![feature(const_option)]
+#![feature(auto_traits)]
+#![feature(negative_impls)]
 
 moddef::pub_flat_mods!(
     padded
@@ -259,6 +261,25 @@ pub trait Array: private::Array
         let mut iter_self = self.into_const_iter();
         let mut iter_other = other.into_const_iter();
         Array::from_const_fn(const |_| (iter_self.next().unwrap(), iter_other.next().unwrap()))
+    }
+
+    #[inline]
+    fn const_reduce<const N: usize>(self, mut reduce: impl ~const FnMut(Self::Item, Self::Item) -> Self::Item + ~const Destruct) -> Option<Self::Item>
+    where
+        Self: Array<LENGTH = {N}>,
+        Self::Item: ~const Destruct
+    {
+        let mut iter = self.into_const_iter();
+        let mut reduction = match iter.next()
+        {
+            Some(x) => x,
+            None => return None
+        };
+        while let Some(x) = iter.next()
+        {
+            reduction = reduce(reduction, x);
+        }
+        Some(reduction)
     }
 
     /// Returns self as an array

@@ -135,7 +135,7 @@ pub trait Array: private::Array
     /// ```
     const LENGTH: usize;
 
-    fn from_const_fn(fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> [Self::Item; Self::LENGTH];
+    fn from_const_fn(fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> Self;
 
     /// Returns self as an array
     /// 
@@ -869,7 +869,7 @@ impl<Item, const LENGTH: usize> const Array for [Item; LENGTH]
     const LENGTH: usize = LENGTH;
 
     #[inline]
-    fn from_const_fn(mut fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> [Item; Self::LENGTH]
+    fn from_const_fn(mut fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> Self
     {
         let mut array = MaybeUninit::uninit_array();
         let mut i = 0;

@@ -9,9 +9,16 @@
 #![feature(const_swap)]
 #![feature(associated_const_equality)]
 #![feature(generic_arg_infer)]
+#![feature(const_closures)]
+#![feature(const_option)]
 
 moddef::pub_flat_mods!(
     padded
+
+    const_iterator
+    into_const_iter
+    const_iter
+    const_iter_mut
 );
 
 use std::{
@@ -138,6 +145,37 @@ pub trait Array: private::Array
     const LENGTH: usize;
 
     fn from_const_fn(fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> Self;
+
+    #[inline]
+    fn into_const_iter<const N: usize>(self) -> IntoConstIter<Self::Item, N>
+    where
+        Self: Array<LENGTH = {N}>
+    {
+        IntoConstIter::from(self.into_array())
+    }
+    #[inline]
+    fn const_iter<const N: usize>(&self) -> ConstIter<'_, Self::Item, N>
+    where
+        Self: Array<LENGTH = {N}>
+    {
+        ConstIter::from(self.as_array())
+    }
+    #[inline]
+    fn const_iter_mut<const N: usize>(&mut self) -> ConstIterMut<'_, Self::Item, N>
+    where
+        Self: Array<LENGTH = {N}>
+    {
+        ConstIterMut::from(self.as_array_mut())
+    }
+
+    #[inline]
+    fn const_map<T, const N: usize>(self, mut map: impl ~const FnMut(Self::Item) -> T + ~const Destruct) -> [T; N]
+    where
+        Self: Array<LENGTH = {N}>
+    {
+        let mut iter = self.into_const_iter();
+        <[T; N]>::from_const_fn(const |_| map(iter.next().unwrap()))
+    }
 
     /// Returns self as an array
     /// 

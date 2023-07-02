@@ -80,7 +80,7 @@ pub trait Array: private::Array
     + IntoIterator//<IntoIter = std::array::IntoIter<<Self as IntoIterator>::Item, {Self::_LENGTH}>>
     + AsRef<[Self::Item]>
     + AsMut<[Self::Item]>
-    + ~const Borrow<[Self::Item]>
+    + Borrow<[Self::Item]>
     + BorrowMut<[Self::Item]>
     + ~const Index<usize, Output = <[Self::Item] as Index<usize>>::Output>
     + ~const Index<Range<usize>, Output = <[Self::Item] as Index<Range<usize>>>::Output>

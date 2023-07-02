@@ -146,6 +146,36 @@ pub trait Array: private::Array
 
     fn from_const_fn(fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> Self;
 
+    /// Converts an array into a const interator.
+    /// 
+    /// The const iterator does not implement [std::iter::Iterator](Iterator), and as such is more limited in its usage.
+    /// However it can be used at compile-time.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(inline_const)]
+    /// #![feature(const_trait_impl)]
+    /// #![feature(const_mut_refs)]
+    /// 
+    /// use array_trait::Array;
+    /// 
+    /// const A: [u8; 3] = [1, 2, 3];
+    /// 
+    /// const A_SUM: u8 = const {
+    ///     let mut iter = A.into_const_iter();
+    ///     let mut sum = 0;
+    /// 
+    ///     while let Some(b) = iter.next()
+    ///     {
+    ///         sum += b;
+    ///     }
+    /// 
+    ///     sum
+    /// };
+    /// 
+    /// assert_eq!(A_SUM, 1 + 2 + 3);
+    /// ```
     #[inline]
     fn into_const_iter<const N: usize>(self) -> IntoConstIter<Self::Item, N>
     where
@@ -153,6 +183,10 @@ pub trait Array: private::Array
     {
         IntoConstIter::from(self.into_array())
     }
+    /// Makes a const iterator over the array-slice.
+    /// 
+    /// The const iterator does not implement [std::iter::Iterator](Iterator), and as such is more limited in its usage.
+    /// However it can be used at compile-time.
     #[inline]
     fn const_iter<const N: usize>(&self) -> ConstIter<'_, Self::Item, N>
     where
@@ -160,6 +194,10 @@ pub trait Array: private::Array
     {
         ConstIter::from(self.as_array())
     }
+    /// Makes a mutable const iterator over the mutable array-slice.
+    /// 
+    /// The const iterator does not implement [std::iter::Iterator](Iterator), and as such is more limited in its usage.
+    /// However it can be used at compile-time.
     #[inline]
     fn const_iter_mut<const N: usize>(&mut self) -> ConstIterMut<'_, Self::Item, N>
     where
@@ -168,6 +206,24 @@ pub trait Array: private::Array
         ConstIterMut::from(self.as_array_mut())
     }
 
+    /// Maps all values of an array with a given function.
+    /// 
+    /// This method can be executed at compile-time, as opposed to the standard-library method.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(const_closures)]
+    /// #![feature(const_mut_refs)]
+    /// #![feature(const_trait_impl)]
+    /// 
+    /// use array_trait::Array;
+    /// 
+    /// const A: [u8; 4] = [1, 2, 3, 4];
+    /// const B: [i8; 4] = A.const_map(const |b| -(b as i8));
+    /// 
+    /// assert_eq!(B, [-1, -2, -3, -4]);
+    /// ```
     #[inline]
     fn const_map<T, const N: usize>(self, mut map: impl ~const FnMut(Self::Item) -> T + ~const Destruct) -> [T; N]
     where

@@ -264,6 +264,15 @@ pub trait Array: private::Array
     }
 
     #[inline]
+    fn const_enumerate<const N: usize>(self) -> [(usize, Self::Item); N]
+    where
+        Self: Array<LENGTH = {N}>
+    {
+        let mut iter_self = self.into_const_iter();
+        Array::from_const_fn(const |i| (i, iter_self.next().unwrap()))
+    }
+
+    #[inline]
     fn const_reduce<const N: usize>(self, mut reduce: impl ~const FnMut(Self::Item, Self::Item) -> Self::Item + ~const Destruct) -> Option<Self::Item>
     where
         Self: Array<LENGTH = {N}>,

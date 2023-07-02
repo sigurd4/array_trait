@@ -15,7 +15,7 @@ moddef::pub_flat_mods!(
 use std::{
     borrow::{Borrow, BorrowMut},
     ops::{Index, Range, RangeInclusive, RangeFrom, RangeTo, RangeToInclusive, IndexMut, RangeFull},
-    mem::MaybeUninit
+    mem::MaybeUninit, marker::Destruct
 };
 
 mod private
@@ -134,6 +134,8 @@ pub trait Array: private::Array
     /// assert_eq!(first_half([1.0, 2.0, 3.0, 4.0]), [1.0, 2.0]);
     /// ```
     const LENGTH: usize;
+
+    fn from_const_fn(fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> [Self::Item; Self::LENGTH];
 
     /// Returns self as an array
     /// 
@@ -866,6 +868,18 @@ impl<Item, const LENGTH: usize> const Array for [Item; LENGTH]
 {
     const LENGTH: usize = LENGTH;
 
+    #[inline]
+    fn from_const_fn(mut fill: impl ~const FnMut(usize) -> Self::Item + ~const Destruct) -> [Item; Self::LENGTH]
+    {
+        let mut array = MaybeUninit::uninit_array();
+        let mut i = 0;
+        while i < Self::LENGTH
+        {
+            array[i] = MaybeUninit::new(fill(i));
+            i += 1;
+        }
+        unsafe {MaybeUninit::array_assume_init(array)}
+    }
     #[inline]
     fn into_array(self) -> [Item; Self::LENGTH]
     {

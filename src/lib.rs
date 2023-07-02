@@ -233,6 +233,34 @@ pub trait Array: private::Array
         <[T; N]>::from_const_fn(const |_| map(iter.next().unwrap()))
     }
 
+    /// Combines two arrays with possibly different items into parallel, where each element lines up in the same position.
+    /// 
+    /// This method can be executed at compile-time, as opposed to the standard-library method.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(const_trait_impl)]
+    /// 
+    /// use array_trait::Array;
+    /// 
+    /// const A: [u8; 4] = [4, 3, 2, 1];
+    /// const B: [&str; 4] = ["four", "three", "two", "one"];
+    /// const C: [(u8, &str); 4] = A.const_zip(B);
+    /// 
+    /// assert_eq!(C, [(4, "four"), (3, "three"), (2, "two"), (1, "one")]);
+    /// ```
+    #[inline]
+    fn const_zip<Other, const N: usize>(self, other: Other) -> [(Self::Item, Other::Item); N]
+    where
+        Self: Array<LENGTH = {N}>,
+        Other: ~const Array<LENGTH = {N}>
+    {
+        let mut iter_self = self.into_const_iter();
+        let mut iter_other = other.into_const_iter();
+        Array::from_const_fn(const |_| (iter_self.next().unwrap(), iter_other.next().unwrap()))
+    }
+
     /// Returns self as an array
     /// 
     /// Useful in the case where a trait is implemented using a generic bound to the [Array](Array) trait.

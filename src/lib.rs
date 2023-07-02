@@ -81,7 +81,7 @@ pub trait Array: private::Array
     + AsRef<[Self::Item]>
     + AsMut<[Self::Item]>
     + ~const Borrow<[Self::Item]>
-    + ~const BorrowMut<[Self::Item]>
+    + BorrowMut<[Self::Item]>
     + ~const Index<usize, Output = <[Self::Item] as Index<usize>>::Output>
     + ~const Index<Range<usize>, Output = <[Self::Item] as Index<Range<usize>>>::Output>
     + ~const Index<RangeInclusive<usize>, Output = <[Self::Item] as Index<RangeInclusive<usize>>>::Output>

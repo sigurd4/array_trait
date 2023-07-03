@@ -1,26 +1,26 @@
-use std::{mem::MaybeUninit, borrow::{Borrow, BorrowMut}, ops::{Deref, DerefMut}};
+use core::{mem::MaybeUninit, borrow::{Borrow, BorrowMut}, ops::{Deref, DerefMut}};
 
 pub struct Padded<T, const WIDTH: usize>([MaybeUninit<T>; WIDTH])
 where
     [(); WIDTH - 1]:;
-impl<T, const WIDTH: usize> std::fmt::Debug for Padded<T, WIDTH>
+impl<T, const WIDTH: usize> core::fmt::Debug for Padded<T, WIDTH>
 where
     [(); WIDTH - 1]:,
-    T: std::fmt::Debug
+    T: core::fmt::Debug
 {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
     {
         self.borrow().fmt(f)
     }
 }
-impl<T, const WIDTH: usize> std::fmt::Display for Padded<T, WIDTH>
+impl<T, const WIDTH: usize> core::fmt::Display for Padded<T, WIDTH>
 where
     [(); WIDTH - 1]:,
-    T: std::fmt::Display
+    T: core::fmt::Display
 {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
     {
         self.borrow().fmt(f)
     }

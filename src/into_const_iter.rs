@@ -1,41 +1,48 @@
-use std::{mem::MaybeUninit};
+use core::{mem::MaybeUninit};
 
 use crate::{private, ConstIterator};
 
-pub struct IntoConstIter<T, const LENGTH: usize>
+pub struct IntoConstIter<T, const LENGTH: usize, const DIR: bool>
 {
     data: [MaybeUninit<T>; LENGTH],
-    i: usize
+    i: Option<usize>
 }
 
-impl<T, const N: usize> IntoConstIter<T, N>
+impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR>
 {   
     #[inline]
     pub const fn from(array: [T; N]) -> Self
     {
         Self {
             data: unsafe {private::transmute_unchecked_size(array)},
-            i: 0
+            i: Some(if DIR {0} else {N - 1})
         }
     }
 
     #[inline]
     pub const fn next(&mut self) -> Option<T>
     {
-        if self.i < N
+        if let Some(i) = self.i.as_mut()
         {
-            let mut out = MaybeUninit::uninit();
-            std::mem::swap(&mut out, &mut self.data[self.i]);
-            self.i += 1;
-            Some(unsafe {MaybeUninit::assume_init(out)})
+            if *i < N
+            {
+                let mut out = MaybeUninit::uninit();
+                core::mem::swap(&mut out, &mut self.data[*i]);
+                if DIR
+                {
+                    self.i = i.checked_add(1);
+                }
+                else
+                {
+                    self.i = i.checked_sub(1);
+                }
+                return Some(unsafe {MaybeUninit::assume_init(out)})
+            }
         }
-        else
-        {
-            None
-        }
+        None
     }
 }
-impl<T, const N: usize> const From<[T; N]> for IntoConstIter<T, N>
+impl<T, const N: usize, const DIR: bool> const From<[T; N]> for IntoConstIter<T, N, DIR>
 {
     #[inline]
     fn from(value: [T; N]) -> Self
@@ -43,7 +50,7 @@ impl<T, const N: usize> const From<[T; N]> for IntoConstIter<T, N>
         Self::from(value)
     }
 }
-impl<T, const N: usize> const ConstIterator for IntoConstIter<T, N>
+impl<T, const N: usize, const DIR: bool> const ConstIterator for IntoConstIter<T, N, DIR>
 {
     type Item<'a> = T
     where

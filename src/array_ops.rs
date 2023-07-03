@@ -1,7 +1,7 @@
 use super::*;
 
 #[const_trait]
-pub trait ArrayOps<T, const N: usize>: Array
+pub trait ArrayOps<T, const N: usize>: Sized
 {
     fn fill(fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self;
     fn rfill(fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self;

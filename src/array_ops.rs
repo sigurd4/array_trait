@@ -11,26 +11,9 @@ where
 }
 
 #[const_trait]
-pub trait ArrayOps<T, const N: usize>: Sized
-    + IntoIterator
-    + AsRef<[Self::Item]>
-    + AsMut<[Self::Item]>
-    + Borrow<[Self::Item]>
-    + BorrowMut<[Self::Item]>
-    + ~const Index<usize, Output = <[Self::Item] as Index<usize>>::Output>
-    + ~const Index<Range<usize>, Output = <[Self::Item] as Index<Range<usize>>>::Output>
-    + ~const Index<RangeInclusive<usize>, Output = <[Self::Item] as Index<RangeInclusive<usize>>>::Output>
-    + ~const Index<RangeFrom<usize>, Output = <[Self::Item] as Index<RangeFrom<usize>>>::Output>
-    + ~const Index<RangeTo<usize>, Output = <[Self::Item] as Index<RangeTo<usize>>>::Output>
-    + ~const Index<RangeToInclusive<usize>, Output = <[Self::Item] as Index<RangeToInclusive<usize>>>::Output>
-    + ~const Index<RangeFull, Output = <[Self::Item] as Index<RangeFull>>::Output>
-    + ~const IndexMut<usize>
-    + ~const IndexMut<Range<usize>>
-    + ~const IndexMut<RangeInclusive<usize>>
-    + ~const IndexMut<RangeFrom<usize>>
-    + ~const IndexMut<RangeTo<usize>>
-    + ~const IndexMut<RangeToInclusive<usize>>
-    + ~const IndexMut<RangeFull>
+pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
+    + Borrow<[T; N]>
+    + BorrowMut<[T; N]>
 {
     type Array<I, const L: usize>: ArrayOps<I, L> = [I; L];
     type PaddedArray<I, const WIDTH: usize, const L: usize> = Self::Array<Padded<I, WIDTH>, L>

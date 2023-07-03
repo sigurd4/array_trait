@@ -15,6 +15,7 @@
 #![feature(const_option)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
+#![feature(trait_alias)]
 
 moddef::pub_flat_mods!(
     padded
@@ -55,28 +56,29 @@ mod private
     }
 }
 
+pub trait ArrayPrereq = Sized
++ IntoIterator
++ AsRef<[<Self as IntoIterator>::Item]>
++ AsMut<[<Self as IntoIterator>::Item]>
++ Borrow<[<Self as IntoIterator>::Item]>
++ BorrowMut<[<Self as IntoIterator>::Item]>
++ ~const Index<usize, Output = <[<Self as IntoIterator>::Item] as Index<usize>>::Output>
++ ~const Index<Range<usize>, Output = <[<Self as IntoIterator>::Item] as Index<Range<usize>>>::Output>
++ ~const Index<RangeInclusive<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeInclusive<usize>>>::Output>
++ ~const Index<RangeFrom<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeFrom<usize>>>::Output>
++ ~const Index<RangeTo<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeTo<usize>>>::Output>
++ ~const Index<RangeToInclusive<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeToInclusive<usize>>>::Output>
++ ~const Index<RangeFull, Output = <[<Self as IntoIterator>::Item] as Index<RangeFull>>::Output>
++ ~const IndexMut<usize>
++ ~const IndexMut<Range<usize>>
++ ~const IndexMut<RangeInclusive<usize>>
++ ~const IndexMut<RangeFrom<usize>>
++ ~const IndexMut<RangeTo<usize>>
++ ~const IndexMut<RangeToInclusive<usize>>
++ ~const IndexMut<RangeFull>;
+
 #[const_trait]
-pub trait Array: private::Array
-    + Sized
-    + IntoIterator
-    + AsRef<[Self::Item]>
-    + AsMut<[Self::Item]>
-    + Borrow<[Self::Item]>
-    + BorrowMut<[Self::Item]>
-    + ~const Index<usize, Output = <[Self::Item] as Index<usize>>::Output>
-    + ~const Index<Range<usize>, Output = <[Self::Item] as Index<Range<usize>>>::Output>
-    + ~const Index<RangeInclusive<usize>, Output = <[Self::Item] as Index<RangeInclusive<usize>>>::Output>
-    + ~const Index<RangeFrom<usize>, Output = <[Self::Item] as Index<RangeFrom<usize>>>::Output>
-    + ~const Index<RangeTo<usize>, Output = <[Self::Item] as Index<RangeTo<usize>>>::Output>
-    + ~const Index<RangeToInclusive<usize>, Output = <[Self::Item] as Index<RangeToInclusive<usize>>>::Output>
-    + ~const Index<RangeFull, Output = <[Self::Item] as Index<RangeFull>>::Output>
-    + ~const IndexMut<usize>
-    + ~const IndexMut<Range<usize>>
-    + ~const IndexMut<RangeInclusive<usize>>
-    + ~const IndexMut<RangeFrom<usize>>
-    + ~const IndexMut<RangeTo<usize>>
-    + ~const IndexMut<RangeToInclusive<usize>>
-    + ~const IndexMut<RangeFull>
+pub trait Array: private::Array + ArrayPrereq
 /*where
     for<'a> &'a Self: TryFrom<&'a [Self::Item]>
         + IntoIterator<Item = &'a Self::Item, IntoIter = Iter<'a, Self::Item>>,

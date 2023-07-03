@@ -14,6 +14,7 @@
 #![feature(const_closures)]
 #![feature(const_option)]
 #![feature(associated_type_bounds)]
+#![feature(associated_type_defaults)]
 
 moddef::pub_flat_mods!(
     padded

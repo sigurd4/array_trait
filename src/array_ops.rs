@@ -20,8 +20,12 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         [(); WIDTH - 1]:;
 
-    fn fill(fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self;
-    fn rfill(fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self;
+    fn fill<F>(fill: F) -> Self
+    where
+        F: ~const FnMut(usize) -> T + ~const Destruct;
+    fn rfill<F>(fill: F) -> Self
+    where
+        F: ~const FnMut(usize) -> T + ~const Destruct;
     
     fn truncate<const M: usize>(self) -> Self::Array<T, M>
     where
@@ -32,18 +36,22 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         T: ~const Destruct,
         [(); N - M]:;
 
-    fn resize<const M: usize>(self, fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn resize<const M: usize, F>(self, fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct;
-    fn rresize<const M: usize>(self, fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn rresize<const M: usize, F>(self, fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct;
 
-    fn extend<const M: usize>(self, fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn extend<const M: usize, F>(self, fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:;
-    fn rextend<const M: usize>(self, fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn rextend<const M: usize, F>(self, fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:;
 
     /// Converts an array into a const interator.
@@ -108,7 +116,9 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(B, [-1, -2, -3, -4]);
     /// ```
-    fn map2<M>(self, map: impl ~const FnMut(T) -> M + ~const Destruct) -> Self::Array<M, N>;
+    fn map2<M>(self, map: M) -> Self::Array<<M as FnOnce<(T,)>>::Output, N>
+    where
+        M: ~const FnMut<(T,)> + ~const Destruct;
 
     /// Combines two arrays with possibly different items into parallel, where each element lines up in the same position.
     /// 
@@ -133,9 +143,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
 
     fn enumerate(self) -> Self::Array<(usize, T), N>;
 
-    fn reduce(self, reduce: impl ~const FnMut(T, T) -> T + ~const Destruct) -> Option<T>
+    fn reduce<R>(self, reduce: R) -> Option<T>
     where
-        T: ~const Destruct;
+        T: ~const Destruct,
+        R: ~const FnMut(T, T) -> T + ~const Destruct;
 
     /// Chains two arrays with the same item together.
     /// 
@@ -523,7 +534,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     type Array<I, const M: usize> = [I; M];
 
     #[inline]
-    fn fill(mut fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self
+    fn fill<F>(mut fill: F) -> Self
+    where
+        F: ~const FnMut(usize) -> T + ~const Destruct
     {
         let mut array = MaybeUninit::uninit_array();
         let mut i = 0;
@@ -535,7 +548,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {MaybeUninit::array_assume_init(array)}
     }
     #[inline]
-    fn rfill(mut fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self
+    fn rfill<F>(mut fill: F) -> Self
+    where
+        F: ~const FnMut(usize) -> T + ~const Destruct
     {
         let mut array = MaybeUninit::uninit_array();
         let mut i = N - 1;
@@ -565,8 +580,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn resize<const M: usize>(self, mut fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn resize<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
     {
         let mut iter = self.into_const_iter();
@@ -577,8 +593,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         })
     }
     #[inline]
-    fn rresize<const M: usize>(self, mut fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn rresize<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
     {
         let mut iter = self.into_const_iter_reverse();
@@ -590,8 +607,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn extend<const M: usize>(self, mut fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn extend<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:
     {
         let filled: [T; M - N] = ArrayOps::fill(const move |i| fill(i + N));
@@ -600,8 +618,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         }
     }
     #[inline]
-    fn rextend<const M: usize>(self, fill: impl ~const FnMut(usize) -> T + ~const Destruct) -> Self::Array<T, M>
+    fn rextend<const M: usize, F>(self, fill: F) -> Self::Array<T, M>
     where
+        F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:
     {
         let filled: [T; M - N] = ArrayOps::fill(fill);
@@ -633,7 +652,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn map2<M>(self, mut map: impl ~const FnMut(T) -> M + ~const Destruct) -> Self::Array<M, N>
+    fn map2<M>(self, mut map: M) -> Self::Array<<M as FnOnce<(T,)>>::Output, N>
+    where
+        M: ~const FnMut<(T,)> + ~const Destruct
     {
         let mut iter = self.into_const_iter();
         ArrayOps::fill(const |_| map(iter.next().unwrap()))
@@ -657,8 +678,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn reduce(self, mut reduce: impl ~const FnMut(T, T) -> T + ~const Destruct) -> Option<T>
+    fn reduce<R>(self, mut reduce: R) -> Option<T>
     where
+        R: ~const FnMut(T, T) -> T + ~const Destruct,
         T: ~const Destruct
     {
         let mut iter = self.into_const_iter();

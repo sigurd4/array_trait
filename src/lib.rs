@@ -16,17 +16,20 @@
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
 #![feature(trait_alias)]
+#![feature(unboxed_closures)]
 
-moddef::pub_flat_mods!(
-    padded
-
-    const_iterator
-    into_const_iter
-    const_iter
-    const_iter_mut
-
-    array_ops
-    array_2d_ops
+moddef::moddef!(
+    flat(pub) mod {
+        padded,
+    
+        const_iterator,
+        into_const_iter,
+        const_iter,
+        const_iter_mut,
+    
+        array_ops,
+        array_2d_ops
+    }
 );
 
 use core::{

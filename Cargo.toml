@@ -1,6 +1,6 @@
 [package]
 name = "array_trait"
-version = "0.4.4"
+version = "0.4.5"
 edition = "2021"
 license = "MIT"
 description = "A generic trait for any array"
@@ -9,4 +9,4 @@ repository = "https://github.com/sigurd4/array_trait"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-moddef = "0.1.0"
+moddef = "0.2.2"

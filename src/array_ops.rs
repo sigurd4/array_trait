@@ -15,10 +15,15 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     + Borrow<[T; N]>
     + BorrowMut<[T; N]>
 {
-    type Array<I, const L: usize>: ArrayOps<I, L> = [I; L];
-    type PaddedArray<I, const WIDTH: usize, const L: usize> = Self::Array<Padded<I, WIDTH>, L>
+    type Array<I, const L: usize>: ~const ArrayOps<I, L> = [I; L];
+    type PaddedItem<I, const W: usize>: ~const Borrow<I> + ~const BorrowMut<I>
+        = Padded<I, W>
     where
-        [(); WIDTH - 1]:;
+        [(); W - 1]:;
+    type PaddedArray<I, const W: usize, const L: usize>: ~const ArrayOps<Self::PaddedItem<I, W>, L>
+        = Self::Array<Self::PaddedItem<I, W>, L>
+    where
+        [(); W - 1]:;
 
     fn fill<F>(fill: F) -> Self
     where

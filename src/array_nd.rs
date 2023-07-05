@@ -134,6 +134,14 @@ macro_rules! impl_nd_array {
                     y
                 })
             }
+            
+            fn reduce_nd<R>(self, reduce: R) -> Option<T>
+            where
+                R: ~const FnMut(T, T) -> T + ~const Destruct,
+                T: ~const Destruct
+            {
+                self.flatten_nd_array().reduce(reduce)
+            }
         }
         $(impl_nd_array!($($b)+);)?
     };

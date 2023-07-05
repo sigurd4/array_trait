@@ -22,7 +22,7 @@
 moddef::moddef!(
     flat(pub) mod {
         array,
-        nd_array,
+        array_nd,
 
         array_ops,
         array_nd_ops,

@@ -175,4 +175,9 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     fn each_mut_nd<B>(&mut self) -> Self::Mapped<&mut B>
     where
         T: ~const BorrowMut<B>;
+
+    fn reduce_nd<R>(self, reduce: R) -> Option<T>
+    where
+        R: ~const FnMut(T, T) -> T + ~const Destruct,
+        T: ~const Destruct;
 }

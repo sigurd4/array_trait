@@ -115,7 +115,6 @@ mod tests {
             [4, 5, 6],
             [7, 8, 9]
         ];
-        let en1 = <[[T; 3]; 3] as ArrayNdOps<1, _, _>>::enumerate_nd(ND);
         const FLAT: [T; 9] = ND.flatten_nd_array();
         assert_eq!(FLAT, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
     }

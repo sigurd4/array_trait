@@ -532,6 +532,13 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn rsplit_array_mut2<const M: usize>(&mut self) -> (&mut Self::Array<T, {N - M}>, &mut Self::Array<T, M>)
     where
         [(); N - M]:;
+
+    fn each_ref2<B>(&self) -> Self::Array<&B, N>
+    where
+        T: ~const Borrow<B>;
+    fn each_mut2<B>(&mut self) -> Self::Array<&mut B, N>
+    where
+        T: ~const BorrowMut<B>;
 }
 
 impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
@@ -967,5 +974,30 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let ptr = self as *const T;
         unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(Self::LENGTH - M)))}
+    }
+
+    #[inline]
+    fn each_ref2<B>(&self) -> Self::Array<&B, N>
+    where
+        T: ~const Borrow<B>
+    {
+        let mut ptr = self as *const T;
+        ArrayOps::fill(const |_| {
+            let y = unsafe {core::mem::transmute::<_, &T>(ptr)}.borrow();
+            ptr = unsafe {ptr.add(1)};
+            y
+        })
+    }
+    #[inline]
+    fn each_mut2<B>(&mut self) -> Self::Array<&mut B, N>
+    where
+        T: ~const BorrowMut<B>
+    {
+        let mut ptr = self as *mut T;
+        ArrayOps::fill(const |_| {
+            let y = unsafe {core::mem::transmute::<_, &mut T>(ptr)}.borrow_mut();
+            ptr = unsafe {ptr.add(1)};
+            y
+        })
     }
 }

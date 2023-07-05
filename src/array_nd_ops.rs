@@ -168,4 +168,11 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// ]);
     /// ```
     fn flatten_nd_array_mut(&mut self) -> &mut [T; L];
+
+    fn each_ref_nd<B>(&self) -> Self::Mapped<&B>
+    where
+        T: ~const Borrow<B>;
+    fn each_mut_nd<B>(&mut self) -> Self::Mapped<&mut B>
+    where
+        T: ~const BorrowMut<B>;
 }

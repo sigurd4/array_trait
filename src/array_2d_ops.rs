@@ -1,7 +1,7 @@
 use super::*;
 
 #[const_trait]
-pub trait Array2DOps<T, const W: usize, const H: usize>: ArrayOps<[T; W], H>
+pub trait Array2dOps<T, const W: usize, const H: usize>: ArrayOps<[T; W], H>
 {
     /// Transposes a two-dimensional array (as if it were a matrix)
     /// 
@@ -27,7 +27,7 @@ pub trait Array2DOps<T, const W: usize, const H: usize>: ArrayOps<[T; W], H>
     fn transpose(self) -> [[T; H]; W];
 }
 
-impl<T, const W: usize, const H: usize> const Array2DOps<T, W, H> for [[T; W]; H]
+impl<T, const W: usize, const H: usize> const Array2dOps<T, W, H> for [[T; W]; H]
 {
     #[inline]
     fn transpose(self) -> [[T; H]; W]

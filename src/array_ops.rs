@@ -1,3 +1,5 @@
+use core::ops::{Add, Sub, AddAssign};
+
 use super::*;
 
 trait Equals<T>
@@ -147,6 +149,38 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         Rhs: ~const Into<Self::Array<O, N>>;
 
     fn enumerate(self) -> Self::Array<(usize, T), N>;
+    
+    /// Differentiates array (discrete calculus)
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(generic_const_exprs)]
+    /// 
+    /// use array_trait::*;
+    /// 
+    /// let a = [1, 2, 3];
+    /// 
+    /// assert_eq!(a.differentiate(), [2 - 1, 3 - 2]);
+    /// ```
+    fn differentiate(self) -> Self::Array<<T as Sub<T>>::Output, {N - 1}>
+    where
+        T: ~const Sub<T> + Copy;
+    
+    /// Integrates array (discrete calculus)
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use array_trait::*;
+    /// 
+    /// let a = [1, 2, 3];
+    /// 
+    /// assert_eq!(a.integrate(), [1, 1 + 2, 1 + 2 + 3])
+    /// ```
+    fn integrate(self) -> Self::Array<T, N>
+    where
+        T: ~const AddAssign<T> + Copy;
 
     fn reduce<R>(self, reduce: R) -> Option<T>
     where
@@ -687,6 +721,54 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut iter_self = self.into_const_iter();
         ArrayOps::fill(const |i| (i, iter_self.next().unwrap()))
+    }
+
+    #[inline]
+    fn differentiate(self) -> Self::Array<<T as Sub<T>>::Output, {N - 1}>
+    where
+        T: ~const Sub<T> + Copy + ~const Destruct
+    {
+        let mut iter_self = self.into_const_iter();
+        if let Some(mut x0) = iter_self.next()
+        {
+            ArrayOps::fill(const move |_| {
+                let x = iter_self.next().unwrap();
+                let dx = x - x0;
+                x0 = x;
+                dx
+            })
+        }
+        else
+        {
+            unsafe {
+                private::transmute_unchecked_size::<[<T as Sub<T>>::Output; 0], _>([])
+            }
+        }
+    }
+
+    #[inline]
+    fn integrate(self) -> Self::Array<T, N>
+        where
+            T: ~const AddAssign<T> + Copy + ~const Destruct
+    {
+        let mut iter_self = self.into_const_iter();
+        if let Some(mut x_accum) = iter_self.next()
+        {
+            ArrayOps::fill(const move |_| {
+                let xi = x_accum;
+                if let Some(x) = iter_self.next()
+                {
+                    x_accum += x;
+                }
+                xi
+            })
+        }
+        else
+        {
+            unsafe {
+                private::transmute_unchecked_size::<[T; 0], _>([])
+            }
+        }
     }
 
     #[inline]

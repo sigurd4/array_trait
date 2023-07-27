@@ -203,6 +203,22 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         Rhs: ~const Into<Self::Array<T, M>>;
 
+    /// Chains two arrays with the same item together in reverse.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use array_trait::*;
+    /// 
+    /// let a = ["two", "three"];
+    /// let b = ["one"];
+    /// 
+    /// assert_eq!(a.rchain(b), ["one", "two", "three"]);
+    /// ```
+    fn rchain<const M: usize, Rhs>(self, rhs: Rhs) -> Self::Array<T, {N + M}>
+    where
+        Rhs: ~const Into<Self::Array<T, M>>;
+
     /// Distributes items of an array equally across a given width, then provides the rest as a separate array.
     /// 
     /// # Example
@@ -796,6 +812,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         Rhs: ~const Into<Self::Array<T, M>>
     {
         unsafe {private::transmute_unchecked_size((self, rhs))}
+    }
+    
+    #[inline]
+    fn rchain<const M: usize, Rhs>(self, rhs: Rhs) -> Self::Array<T, {N + M}>
+    where
+        Rhs: ~const Into<Self::Array<T, M>>
+    {
+        unsafe {private::transmute_unchecked_size((rhs, self))}
     }
     
     #[inline]

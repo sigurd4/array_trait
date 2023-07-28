@@ -243,21 +243,13 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         [(); N - M]:;
     
-    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M]
-    where
-        [(); N - M]:;
+    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M];
 
-    fn shift_many_left<const M: usize>(&mut self, items: [T; M]) -> [T; M]
-    where
-        [(); N - M]:;
+    fn shift_many_left<const M: usize>(&mut self, items: [T; M]) -> [T; M];
     
-    fn shift_left(&mut self, item: T) -> T
-    where
-        [(); N - 1]:;
+    fn shift_left(&mut self, item: T) -> T;
 
-    fn shift_right(&mut self, item: T) -> T
-    where
-        [(); N - 1]:;
+    fn shift_right(&mut self, item: T) -> T;
 
     fn into_single(self) -> T
     where
@@ -788,53 +780,55 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn shift_many_left<const M: usize>(&mut self, mut items: [T; M]) -> [T; M]
-    where
-        [(); N - M]:
+    fn shift_many_left<const M: usize>(&mut self, items: [T; M]) -> [T; M]
     {
-        let (left_take, right_take) = self.split_array_mut2::<M>();
-        let (left, mut right) = (
-            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
-            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
-        );
-        let (left_put, right_put) = self.rsplit_array_mut2::<M>();
-        core::mem::swap(left_put, right.deref_mut());
-        core::mem::swap(right_put, &mut items);
-        core::mem::forget((items, right));
-        ManuallyDrop::into_inner(left)
+        let (overflow, mut buffer): (ManuallyDrop<[T; M]>, ManuallyDrop<Self>) = unsafe {
+            private::transmute_unchecked_size(
+                (core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())), items)
+            )
+        };
+        core::mem::swap(self, buffer.deref_mut());
+        core::mem::forget(buffer);
+        ManuallyDrop::into_inner(overflow)
     }
 
     #[inline]
-    fn shift_many_right<const M: usize>(&mut self, mut items: [T; M]) -> [T; M]
-    where
-        [(); N - M]:
+    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M]
     {
-        let (left_take, right_take) = self.rsplit_array_mut2::<M>();
-        let (mut left, right) = (
-            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
-            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
-        );
-        let (left_put, right_put) = self.split_array_mut2::<M>();
-        core::mem::swap(left_put, &mut items);
-        core::mem::swap(right_put, left.deref_mut());
-        core::mem::forget((items, left));
-        ManuallyDrop::into_inner(right)
+        let (mut buffer, overflow): (ManuallyDrop<Self>, ManuallyDrop<[T; M]>) = unsafe {
+            private::transmute_unchecked_size(
+                (items, core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())))
+            )
+        };
+        core::mem::swap(self, buffer.deref_mut());
+        core::mem::forget(buffer);
+        ManuallyDrop::into_inner(overflow)
     }
     
     #[inline]
     fn shift_left(&mut self, item: T) -> T
-    where
-        [(); N - 1]:
     {
-        unsafe {private::transmute_unchecked_size(self.shift_many_left([item]))}
+        let (overflow, mut buffer): (ManuallyDrop<T>, ManuallyDrop<Self>) = unsafe {
+            private::transmute_unchecked_size(
+                (core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())), item)
+            )
+        };
+        core::mem::swap(self, buffer.deref_mut());
+        core::mem::forget(buffer);
+        ManuallyDrop::into_inner(overflow)
     }
 
     #[inline]
     fn shift_right(&mut self, item: T) -> T
-    where
-        [(); N - 1]:
     {
-        unsafe {private::transmute_unchecked_size(self.shift_many_right([item]))}
+        let (mut buffer, overflow): (ManuallyDrop<Self>, ManuallyDrop<T>) = unsafe {
+            private::transmute_unchecked_size(
+                (item, core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())))
+            )
+        };
+        core::mem::swap(self, buffer.deref_mut());
+        core::mem::forget(buffer);
+        ManuallyDrop::into_inner(overflow)
     }
 
     #[inline]

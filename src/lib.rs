@@ -18,6 +18,8 @@
 #![feature(concat_idents)]
 #![feature(decl_macro)]
 #![feature(generic_arg_infer)]
+#![feature(const_replace)]
+#![feature(const_deref)]
 
 moddef::moddef!(
     flat(pub) mod {
@@ -67,6 +69,18 @@ mod private
         }
         ManuallyDrop::into_inner(unsafe {Transmutation {a: ManuallyDrop::new(from)}.b})
     }
+
+    #[inline]
+    pub(crate) const fn split_array_mandrop<T, const N: usize, const M: usize>(a: [T; N]) -> (ManuallyDrop<[T; M]>, ManuallyDrop<[T; N - M]>)
+    {
+        unsafe {transmute_unchecked_size(a)}
+    }
+
+    #[inline]
+    pub(crate) const fn rsplit_array_mandrop<T, const N: usize, const M: usize>(a: [T; N]) -> (ManuallyDrop<[T; N - M]>, ManuallyDrop<[T; M]>)
+    {
+        unsafe {transmute_unchecked_size(a)}
+    }
 }
 
 pub trait ArrayPrereq = Sized
@@ -94,6 +108,15 @@ pub trait ArrayPrereq = Sized
 mod tests {
 
     use super::*;
+
+    #[test]
+    fn rotate()
+    {
+        let mut a = [1, 2, 3, 4, 5];
+
+        //a.rotate_right2::<4>();
+        println!("{:?}", a.into_shift_many_right([-1, -2, -3]));
+    }
 
     #[test]
     fn it_works()

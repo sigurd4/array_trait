@@ -1,4 +1,4 @@
-use core::ops::{Add, Sub, AddAssign};
+use core::{ops::{Add, Sub, AddAssign, DerefMut}, mem::ManuallyDrop};
 
 use super::*;
 
@@ -218,6 +218,51 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn rchain<const M: usize, Rhs>(self, rhs: Rhs) -> Self::Array<T, {N + M}>
     where
         Rhs: ~const Into<Self::Array<T, M>>;
+    
+    fn into_rotate_left<const M: usize>(self) -> Self
+    where
+        [(); N - M]:;
+
+    fn into_rotate_right<const M: usize>(self) -> Self
+    where
+        [(); N - M]:;
+
+    fn into_shift_many_left<const M: usize>(self, items: [T; M]) -> ([T; M], Self);
+        
+    fn into_shift_many_right<const M: usize>(self, items: [T; M]) -> (Self, [T; M]);
+
+    fn into_shift_left(self, item: T) -> (T, Self);
+        
+    fn into_shift_right(self, item: T) -> (Self, T);
+
+    fn rotate_right2<const M: usize>(&mut self)
+    where
+        [(); N - M]:;
+
+    fn rotate_left2<const M: usize>(&mut self)
+    where
+        [(); N - M]:;
+    
+    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M]
+    where
+        [(); N - M]:;
+
+    fn shift_many_left<const M: usize>(&mut self, items: [T; M]) -> [T; M]
+    where
+        [(); N - M]:;
+    
+    fn shift_left(&mut self, item: T) -> T
+    where
+        [(); N - 1]:;
+
+    fn shift_right(&mut self, item: T) -> T
+    where
+        [(); N - 1]:;
+
+    fn into_single(self) -> T
+    where
+        [(); 1 - N]:,
+        [(); N - 1]:;
 
     /// Distributes items of an array equally across a given width, then provides the rest as a separate array.
     /// 
@@ -666,6 +711,139 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
             Some(item) => item,
             None => fill(i)
         })
+    }
+
+    #[inline]
+    fn into_rotate_left<const M: usize>(self) -> Self
+        where
+            [(); N - M]:
+    {
+        let (left, right) = private::split_array_mandrop::<_, _, M>(self);
+        unsafe {private::transmute_unchecked_size((right, left))}
+    }
+    
+    #[inline]
+    fn into_rotate_right<const M: usize>(self) -> Self
+        where
+            [(); N - M]:
+    {
+        let (left, right) = private::rsplit_array_mandrop::<_, _, M>(self);
+        unsafe {private::transmute_unchecked_size((right, left))}
+    }
+
+    #[inline]
+    fn into_shift_many_left<const M: usize>(self, items: [T; M]) -> ([T; M], Self)
+    {
+        unsafe {private::transmute_unchecked_size((self, items))}
+    }
+
+    #[inline]
+    fn into_shift_many_right<const M: usize>(self, items: [T; M]) -> (Self, [T; M])
+    {
+        unsafe {private::transmute_unchecked_size((items, self))}
+    }
+
+    #[inline]
+    fn into_shift_left(self, item: T) -> (T, Self)
+    {
+        unsafe {private::transmute_unchecked_size((self, item))}
+    }
+
+    #[inline]
+    fn into_shift_right(self, item: T) -> (Self, T)
+    {
+        unsafe {private::transmute_unchecked_size((item, self))}
+    }
+
+    #[inline]
+    fn rotate_left2<const M: usize>(&mut self)
+    where
+        [(); N - M]:
+    {
+        let (left_take, right_take) = self.split_array_mut2::<M>();
+        let (mut left, mut right) = (
+            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
+            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
+        );
+        let (left_put, right_put) = self.rsplit_array_mut2::<M>();
+        core::mem::swap(left_put, right.deref_mut());
+        core::mem::swap(right_put, left.deref_mut());
+        core::mem::forget((left, right));
+    }
+
+    #[inline]
+    fn rotate_right2<const M: usize>(&mut self)
+    where
+        [(); N - M]:
+    {
+        let (left_take, right_take) = self.rsplit_array_mut2::<M>();
+        let (mut left, mut right) = (
+            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
+            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
+        );
+        let (left_put, right_put) = self.split_array_mut2::<M>();
+        core::mem::swap(left_put, right.deref_mut());
+        core::mem::swap(right_put, left.deref_mut());
+        core::mem::forget((left, right));
+    }
+
+    #[inline]
+    fn shift_many_left<const M: usize>(&mut self, mut items: [T; M]) -> [T; M]
+    where
+        [(); N - M]:
+    {
+        let (left_take, right_take) = self.split_array_mut2::<M>();
+        let (left, mut right) = (
+            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
+            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
+        );
+        let (left_put, right_put) = self.rsplit_array_mut2::<M>();
+        core::mem::swap(left_put, right.deref_mut());
+        core::mem::swap(right_put, &mut items);
+        core::mem::forget((items, right));
+        ManuallyDrop::into_inner(left)
+    }
+
+    #[inline]
+    fn shift_many_right<const M: usize>(&mut self, mut items: [T; M]) -> [T; M]
+    where
+        [(); N - M]:
+    {
+        let (left_take, right_take) = self.rsplit_array_mut2::<M>();
+        let (mut left, right) = (
+            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
+            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
+        );
+        let (left_put, right_put) = self.split_array_mut2::<M>();
+        core::mem::swap(left_put, &mut items);
+        core::mem::swap(right_put, left.deref_mut());
+        core::mem::forget((items, left));
+        ManuallyDrop::into_inner(right)
+    }
+    
+    #[inline]
+    fn shift_left(&mut self, item: T) -> T
+    where
+        [(); N - 1]:
+    {
+        unsafe {private::transmute_unchecked_size(self.shift_many_left([item]))}
+    }
+
+    #[inline]
+    fn shift_right(&mut self, item: T) -> T
+    where
+        [(); N - 1]:
+    {
+        unsafe {private::transmute_unchecked_size(self.shift_many_right([item]))}
+    }
+
+    #[inline]
+    fn into_single(self) -> T
+        where
+            [(); 1 - N]:,
+            [(); N - 1]:
+    {
+        unsafe {private::transmute_unchecked_size(self)}
     }
     
     #[inline]

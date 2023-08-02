@@ -1,5 +1,7 @@
 use core::{ops::{Sub, AddAssign, DerefMut}, mem::ManuallyDrop};
 
+use core::ops::Deref;
+
 use super::*;
 
 #[const_trait]
@@ -134,9 +136,7 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(C, [(4, "four"), (3, "three"), (2, "two"), (1, "one")]);
     /// ```
-    fn zip2<O, Rhs>(self, other: Rhs) -> Self::Array<(T, O), N>
-    where
-        Rhs: ~const Into<Self::Array<O, N>>;
+    fn zip2<O>(self, other: Self::Array<O, N>) -> Self::Array<(T, O), N>;
 
     fn enumerate(self) -> Self::Array<(usize, T), N>;
     
@@ -157,9 +157,8 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const Sub<T> + Copy;
     
-    fn differentiate_from<This, I>(array: This) -> Self
+    fn differentiate_from<I>(array: Self::Array<I, {N + 1}>) -> Self
     where
-        This: ~const Into<Self::Array<I, {N + 1}>>,
         I: ~const Sub<I, Output = T> + Copy + ~const Destruct;
     
     /// Integrates array (discrete calculus)
@@ -179,8 +178,11 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
 
     fn reduce<R>(self, reduce: R) -> Option<T>
     where
-        T: ~const Destruct,
         R: ~const FnMut(T, T) -> T + ~const Destruct;
+    
+    fn sum(self) -> T
+    where
+        T: ~const Default + ~const AddAssign;
 
     /// Chains two arrays with the same item together.
     /// 
@@ -194,14 +196,9 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(a.chain(b), ["one", "two", "three"]);
     /// ```
-    fn chain<const M: usize, Rhs>(self, rhs: Rhs) -> Self::Array<T, {N + M}>
-    where
-        Rhs: ~const Into<Self::Array<T, M>>;
+    fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> Self::Array<T, {N + M}>;
     
-    fn chain_from<const M: usize, This, Rhs>(array: This, rhs: Rhs) -> Self
-    where
-        This: ~const Into<Self::Array<T, {N - M}>>,
-        Rhs: ~const Into<Self::Array<T, M>>;
+    fn chain_from<const M: usize>(array: Self::Array<T, {N - M}>, rhs: Self::Array<T, M>) -> Self;
 
     /// Chains two arrays with the same item together in reverse.
     /// 
@@ -215,14 +212,9 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(a.rchain(b), ["one", "two", "three"]);
     /// ```
-    fn rchain<const M: usize, Rhs>(self, rhs: Rhs) -> Self::Array<T, {N + M}>
-    where
-        Rhs: ~const Into<Self::Array<T, M>>;
+    fn rchain<const M: usize>(self, rhs: Self::Array<T, M>) -> Self::Array<T, {N + M}>;
         
-    fn rchain_from<const M: usize, This, Rhs>(array: This, rhs: Rhs) -> Self
-    where
-        This: ~const Into<Self::Array<T, {N - M}>>,
-        Rhs: ~const Into<Self::Array<T, M>>;
+    fn rchain_from<const M: usize>(array: Self::Array<T, {N - M}>, rhs: Self::Array<T, M>) -> Self;
     
     fn into_rotate_left<const M: usize>(self) -> Self
     where
@@ -232,13 +224,9 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         [(); N - M]:;
 
-    fn into_shift_many_left<const M: usize, I>(self, items: I) -> ([T; M], Self)
-    where
-        I: ~const Into<[T; M]>;
+    fn into_shift_many_left<const M: usize>(self, items: [T; M]) -> ([T; M], Self);
         
-    fn into_shift_many_right<const M: usize, I>(self, items: I) -> (Self, [T; M])
-    where
-        I: ~const Into<[T; M]>;
+    fn into_shift_many_right<const M: usize>(self, items: [T; M]) -> (Self, [T; M]);
 
     fn into_shift_left(self, item: T) -> (T, Self);
         
@@ -252,13 +240,9 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         [(); N - M]:;
     
-    fn shift_many_right<const M: usize, I>(&mut self, items: I) -> [T; M]
-    where
-        I: ~const Into<[T; M]>;
+    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M];
 
-    fn shift_many_left<const M: usize, I>(&mut self, items: I) -> [T; M]
-    where
-        I: ~const Into<[T; M]>;
+    fn shift_many_left<const M: usize>(&mut self, items: [T; M]) -> [T; M];
     
     fn shift_left(&mut self, item: T) -> T;
 
@@ -607,17 +591,13 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         [(); 0 - N % M]:,
         [(); N / M]:;
 
-    fn split_array_from<const M: usize, This>(array: This) -> (Self::Array<T, M>, Self::Array<T, N>)
-    where
-        This: ~const Into<Self::Array<T, {N + M}>>;
+    fn split_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, M>, Self::Array<T, N>);
     
     fn split_array_from_ref<const M: usize>(array: &Self::Array<T, {N + M}>) -> (&Self::Array<T, M>, &Self::Array<T, N>);
     
     fn split_array_from_mut<const M: usize>(array: &mut Self::Array<T, {N + M}>) -> (&mut Self::Array<T, M>, &mut Self::Array<T, N>);
     
-    fn rsplit_array_from<const M: usize, This>(array: This) -> (Self::Array<T, N>, Self::Array<T, M>)
-    where
-        This: ~const Into<Self::Array<T, {N + M}>>;
+    fn rsplit_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, N>, Self::Array<T, M>);
     
     fn rsplit_array_from_ref<const M: usize>(array: &Self::Array<T, {N + M}>) -> (&Self::Array<T, N>, &Self::Array<T, M>);
     
@@ -753,19 +733,15 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn into_shift_many_left<const M: usize, I>(self, items: I) -> ([T; M], Self)
-    where
-        I: ~const Into<[T; M]>
+    fn into_shift_many_left<const M: usize>(self, items: [T; M]) -> ([T; M], Self)
     {
-        unsafe {private::transmute_unchecked_size((self, items.into()))}
+        unsafe {private::transmute_unchecked_size((self, items))}
     }
 
     #[inline]
-    fn into_shift_many_right<const M: usize, I>(self, items: I) -> (Self, [T; M])
-    where
-        I: ~const Into<[T; M]>
+    fn into_shift_many_right<const M: usize>(self, items: [T; M]) -> (Self, [T; M])
     {
-        unsafe {private::transmute_unchecked_size((items.into(), self))}
+        unsafe {private::transmute_unchecked_size((items, self))}
     }
 
     #[inline]
@@ -813,13 +789,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn shift_many_left<const M: usize, I>(&mut self, items: I) -> [T; M]
-    where
-        I: ~const Into<[T; M]>
+    fn shift_many_left<const M: usize>(&mut self, items: [T; M]) -> [T; M]
     {
         let (overflow, mut buffer): (ManuallyDrop<[T; M]>, ManuallyDrop<Self>) = unsafe {
             private::transmute_unchecked_size(
-                (core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())), items.into())
+                (core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())), items)
             )
         };
         core::mem::swap(self, buffer.deref_mut());
@@ -828,13 +802,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn shift_many_right<const M: usize, I>(&mut self, items: I) -> [T; M]
-    where
-        I: ~const Into<[T; M]>
+    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M]
     {
         let (mut buffer, overflow): (ManuallyDrop<Self>, ManuallyDrop<[T; M]>) = unsafe {
             private::transmute_unchecked_size(
-                (items.into(), core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())))
+                (items, core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())))
             )
         };
         core::mem::swap(self, buffer.deref_mut());
@@ -932,12 +904,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn zip2<O, Rhs>(self, other: Rhs) -> Self::Array<(T, O), N>
-    where
-        Rhs: ~const Into<Self::Array<O, N>>
+    fn zip2<O>(self, other: Self::Array<O, N>) -> Self::Array<(T, O), N>
     {
         let mut iter_self = self.into_const_iter();
-        let mut iter_other = other.into().into_const_iter();
+        let mut iter_other = other.into_const_iter();
         ArrayOps::fill(const |_| (iter_self.next().unwrap(), iter_other.next().unwrap()))
     }
     
@@ -972,12 +942,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn differentiate_from<This, I>(array: This) -> Self
+    fn differentiate_from<I>(array: Self::Array<I, {N + 1}>) -> Self
     where
-        This: ~const Into<Self::Array<I, {N + 1}>>,
         I: ~const Sub<I, Output = T> + Copy + ~const Destruct
     {
-        let mut iter_self = array.into().into_const_iter();
+        let mut iter_self = array.into_const_iter();
         if let Some(mut x0) = iter_self.next()
         {
             ArrayOps::fill(const move |_| {
@@ -1023,54 +992,78 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     #[inline]
     fn reduce<R>(self, mut reduce: R) -> Option<T>
     where
-        R: ~const FnMut(T, T) -> T + ~const Destruct,
-        T: ~const Destruct
+        R: ~const FnMut(T, T) -> T + ~const Destruct
     {
         let mut iter = self.into_const_iter();
-        let mut reduction = match iter.next()
+
+        let mut next = ManuallyDrop::new(iter.next());
+        let mut reduction = if next.deref().is_some()
         {
-            Some(x) => x,
-            None => return None
+            ManuallyDrop::into_inner(next).unwrap()
+        }
+        else
+        {
+            return None
         };
-        while let Some(x) = iter.next()
+        while {
+            next = ManuallyDrop::new(iter.next());
+            next.deref().is_some()
+        }
         {
+            let x = ManuallyDrop::into_inner(next).unwrap();
             reduction = reduce(reduction, x);
         }
         Some(reduction)
     }
     
-    #[inline]
-    fn chain<const M: usize, Rhs>(self, rhs: Rhs) -> Self::Array<T, {N + M}>
+    fn sum(self) -> T
     where
-        Rhs: ~const Into<Self::Array<T, M>>
+        T: ~const Default + ~const AddAssign
     {
-        unsafe {private::transmute_unchecked_size((self, rhs.into()))}
-    }
+        let mut iter = self.into_const_iter();
 
-    #[inline]
-    fn chain_from<const M: usize, This, Rhs>(array: This, rhs: Rhs) -> Self
-    where
-        This: ~const Into<Self::Array<T, {N - M}>>,
-        Rhs: ~const Into<Self::Array<T, M>>
-    {
-        unsafe {private::transmute_unchecked_size((array.into(), rhs.into()))}
+        let mut next = ManuallyDrop::new(iter.next());
+        let mut reduction = if next.deref().is_some()
+        {
+            ManuallyDrop::into_inner(next).unwrap()
+        }
+        else
+        {
+            return Default::default()
+        };
+        while {
+            next = ManuallyDrop::new(iter.next());
+            next.deref().is_some()
+        }
+        {
+            let x = ManuallyDrop::into_inner(next).unwrap();
+            reduction += x;
+        }
+        reduction
     }
     
     #[inline]
-    fn rchain<const M: usize, Rhs>(self, rhs: Rhs) -> Self::Array<T, {N + M}>
-    where
-        Rhs: ~const Into<Self::Array<T, M>>
+    fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> Self::Array<T, {N + M}>
     {
-        unsafe {private::transmute_unchecked_size((rhs.into(), self))}
+        unsafe {private::transmute_unchecked_size((self, rhs))}
     }
 
     #[inline]
-    fn rchain_from<const M: usize, This, Rhs>(array: This, rhs: Rhs) -> Self
-    where
-        This: ~const Into<Self::Array<T, {N - M}>>,
-        Rhs: ~const Into<Self::Array<T, M>>
+    fn chain_from<const M: usize>(array: Self::Array<T, {N - M}>, rhs: Self::Array<T, M>) -> Self
     {
-        unsafe {private::transmute_unchecked_size((rhs.into(), array.into()))}
+        unsafe {private::transmute_unchecked_size((array, rhs))}
+    }
+    
+    #[inline]
+    fn rchain<const M: usize>(self, rhs: Self::Array<T, M>) -> Self::Array<T, {N + M}>
+    {
+        unsafe {private::transmute_unchecked_size((rhs, self))}
+    }
+
+    #[inline]
+    fn rchain_from<const M: usize>(array: Self::Array<T, {N - M}>, rhs: Self::Array<T, M>) -> Self
+    {
+        unsafe {private::transmute_unchecked_size((rhs, array))}
     }
     
     #[inline]
@@ -1286,11 +1279,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn split_array_from<const M: usize, This>(array: This) -> (Self::Array<T, M>, Self::Array<T, N>)
-    where
-        This: ~const Into<Self::Array<T, {N + M}>>
+    fn split_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, M>, Self::Array<T, N>)
     {
-        unsafe {private::transmute_unchecked_size(array.into())}
+        unsafe {private::transmute_unchecked_size(array)}
     }
     
     #[inline]
@@ -1308,9 +1299,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn rsplit_array_from<const M: usize, This>(array: This) -> (Self::Array<T, N>, Self::Array<T, M>)
-    where
-        This: ~const Into<Self::Array<T, {N + M}>>
+    fn rsplit_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, N>, Self::Array<T, M>)
     {
         unsafe {private::transmute_unchecked_size(array)}
     }

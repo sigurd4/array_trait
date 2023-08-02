@@ -20,6 +20,7 @@
 #![feature(generic_arg_infer)]
 #![feature(const_replace)]
 #![feature(const_deref)]
+#![feature(const_refs_to_cell)]
 
 moddef::moddef!(
     flat(pub) mod {
@@ -110,9 +111,85 @@ mod tests {
     use super::*;
 
     #[test]
+    fn gpa()
+    {
+        #[repr(u8)]
+        enum Grade
+        {
+            A = 5,
+            B = 4,
+            C = 3,
+            D = 2,
+            E = 1
+        }
+
+        const GRADES_UNI: [(u8, Grade); 21] = [
+            (5, Grade::C), // Ingeniørrollen
+            (5, Grade::A), // Programmering for beregning
+            (5, Grade::B), // Elektrisitetslære
+            (5, Grade::D), // Digitalteknikk
+            (10, Grade::A), // Programmering og mikrokontrollere
+            (10, Grade::A), // Matematikk 1
+            (5, Grade::C), // Fysikk 1 - Mekanikk
+            (5, Grade::A), // Elektrisitetslære 2
+            (5, Grade::A), // Programmerbare logiske kretser
+            (10, Grade::A), // Matematikk 2
+            (5, Grade::C), // Kommunikasjon
+            (10, Grade::B), // Analog elektronikk
+            (10, Grade::B), // Systems design and engineering
+            (5, Grade::C), // Statistikk
+            (10, Grade::E), // Signalbehandling
+            (10, Grade::C), // Reguleringsteknikk 1
+            (5, Grade::B), // Fysikk 2 - Elektromagnetisme
+            (10, Grade::C), // Reguleringsteknikk 2
+            (10, Grade::C), // Matematikk 3
+            (10, Grade::C), // Instrumentering og styring
+            (20, Grade::B) // Bacheloroppgave - Automatisk gir-system for Lone Wolf ATV
+        ];
+        const GRADES_VGS: [u8; 23] = [
+            5, // Engelsk
+            2, // Spansk II
+            4, // Geografi
+            4, // Historie
+            4, // Kroppsøving
+            4, // Matematikk 1T
+            5, // Naturfag
+            4, // Norsk hovedmål
+            4, // Norsk hovedmål, eksamen
+            3, // Norsk sidemål
+            2, // Norsk sidemål, eksamen
+            3, // Norsk
+            3, // Religion og etikk
+            4, // Samfunnsfag
+            4, // Fysikk 1
+            4, // Fysikk 2
+            5, // Fysikk 2, eksamen
+            3, // Kjemi
+            4, // Informasjonsteknologi 1
+            5, // Informasjonsteknologi 2
+            4, // Teknologi og forskningslære 1
+            3, // Matematikk R1
+            4, // Matematikk R2
+        ];
+
+        const GPA_UNI: f32 = GRADES_UNI.map2(const |(pts, grade)| (pts*grade as u8) as u16)
+            .sum() as f32
+            /GRADES_UNI.map2(const |(pts, _)| pts as u16)
+            .sum() as f32;
+
+        println!("{}", GPA_UNI);
+
+        const GPA_VGS: f32 = GRADES_VGS.map2(const |grade| grade as u16)
+            .sum() as f32
+            /GRADES_VGS.len() as f32;
+            
+        println!("{}", GPA_VGS);
+    }
+
+    #[test]
     fn rotate()
     {
-        let mut a = [1, 2, 3, 4, 5];
+        let a = [1, 2, 3, 4, 5];
 
         //a.rotate_right2::<4>();
         println!("{:?}", a.into_shift_many_right([-1, -2, -3]));
@@ -140,6 +217,11 @@ mod tests {
         ];
         const FLAT: [T; 9] = ND.flatten_nd_array();
         assert_eq!(FLAT, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+        const ND_T: [[T; 3]; 3] = ND.transpose();
+
+        const FLAT_T: [T; 9] = ND_T.flatten_nd_array();
+        assert_eq!(FLAT, [1, 4, 7, 2, 5, 8, 3, 6, 9]);
     }
 
     #[test]

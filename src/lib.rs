@@ -221,7 +221,7 @@ mod tests {
         const ND_T: [[T; 3]; 3] = ND.transpose();
 
         const FLAT_T: [T; 9] = ND_T.flatten_nd_array();
-        assert_eq!(FLAT, [1, 4, 7, 2, 5, 8, 3, 6, 9]);
+        assert_eq!(FLAT_T, [1, 4, 7, 2, 5, 8, 3, 6, 9]);
     }
 
     #[test]

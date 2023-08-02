@@ -519,7 +519,7 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(jfets, &["2SK30A", "2N5458", "J108"]);
     /// assert_eq!(mosfets, &["2N7000", "BS170"]);
     /// ```
-    fn array_chunks_ref<const M: usize>(&self) -> ([&Self::Array<T, M>; N / M], &Self::Array<T, {N % M}>);
+    fn array_chunks_ref<const M: usize>(&self) -> (&[Self::Array<T, M>; N / M], &Self::Array<T, {N % M}>);
     /// Divides a mutable array-slice into chunks, then yielding the rest in a separate mutable array-slice.
     /// 
     /// # Example
@@ -544,14 +544,14 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(array, [0, 1, 2, 3, 4, 5, 6]);
     /// ```
-    fn array_chunks_mut<const M: usize>(&mut self) -> ([&mut Self::Array<T, M>; N / M], &mut Self::Array<T, {N % M}>);
+    fn array_chunks_mut<const M: usize>(&mut self) -> (&mut [Self::Array<T, M>; N / M], &mut Self::Array<T, {N % M}>);
     
     /// Divides a mutable array-slice into chunks, then yielding the leftmost rest in a separate mutable array-slice.
     fn array_rchunks<const M: usize>(self) -> (Self::Array<T, {N % M}>, [Self::Array<T, M>; N / M]);
     /// Divides an array-slice into chunks, then yielding the leftmost rest in a separate array-slice.
-    fn array_rchunks_ref<const M: usize>(&self) -> (&Self::Array<T, {N % M}>, [&Self::Array<T, M>; N / M]);
+    fn array_rchunks_ref<const M: usize>(&self) -> (&Self::Array<T, {N % M}>, &[Self::Array<T, M>; N / M]);
     /// Divides a mutable array-slice into chunks, then yielding the leftmost rest in a separate array-slice.
-    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut Self::Array<T, {N % M}>, [&mut Self::Array<T, M>; N / M]);
+    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut Self::Array<T, {N % M}>, &mut [Self::Array<T, M>; N / M]);
     
     /// Divides an array into chunks, with no rest.
     /// 
@@ -579,14 +579,14 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(lower_half, &[0.0, 0.1, 0.2, 0.3, 0.4]);
     /// assert_eq!(upper_half, &[0.5, 0.6, 0.7, 0.8, 0.9]);
     /// ```
-    fn array_chunks_exact_ref<const M: usize>(&self) -> [&Self::Array<T, M>; N / M]
+    fn array_chunks_exact_ref<const M: usize>(&self) -> &[Self::Array<T, M>; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:;
     /// Divides a mutable array-slice into chunks, with no rest.
     /// 
     /// The chunk length must be a factor of the array length, otherwise it will not compile.
-    fn array_chunks_exact_mut<const M: usize>(&mut self) -> [&mut Self::Array<T, M>; N / M]
+    fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut [Self::Array<T, M>; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:;
@@ -1189,26 +1189,16 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {private::transmute_unchecked_size(self)}
     }
     #[inline]
-    fn array_chunks_ref<const M: usize>(&self) -> ([&Self::Array<T, M>; N / M], &Self::Array<T, {N % M}>)
+    fn array_chunks_ref<const M: usize>(&self) -> (&[Self::Array<T, M>; N / M], &Self::Array<T, {N % M}>)
     {
         let mut ptr = self as *const T;
-
-        (ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(M)};
-            slice
-        }), unsafe {core::mem::transmute(ptr)})
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - (N % M))))}
     }
     #[inline]
-    fn array_chunks_mut<const M: usize>(&mut self) -> ([&mut Self::Array<T, M>; N / M], &mut Self::Array<T, {N % M}>)
+    fn array_chunks_mut<const M: usize>(&mut self) -> (&mut [Self::Array<T, M>; N / M], &mut Self::Array<T, {N % M}>)
     {
         let mut ptr = self as *mut T;
-
-        (ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(M)};
-            slice
-        }), unsafe {core::mem::transmute(ptr)})
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - (N % M))))}
     }
 
     #[inline]
@@ -1217,28 +1207,16 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {private::transmute_unchecked_size(self)}
     }
     #[inline]
-    fn array_rchunks_ref<const M: usize>(&self) -> (&[T; N % M], [&[T; M]; N / M])
+    fn array_rchunks_ref<const M: usize>(&self) -> (&[T; N % M], &[[T; M]; N / M])
     {
-        let start = self as *const T;
-        let mut ptr = unsafe {start.add(N % M)};
-
-        (unsafe {core::mem::transmute(start)}, ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(M)};
-            slice
-        }))
+        let ptr = self as *const T;
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N % M)))}
     }
     #[inline]
-    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut Self::Array<T, {N % M}>, [&mut Self::Array<T, M>; N / M])
+    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut Self::Array<T, {N % M}>, &mut [Self::Array<T, M>; N / M])
     {
-        let start = self as *mut T;
-        let mut ptr = unsafe {start.add(N % M)};
-
-        (unsafe {core::mem::transmute(start)}, ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(M)};
-            slice
-        }))
+        let ptr = self as *mut T;
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N % M)))}
     }
     
     #[inline]
@@ -1250,32 +1228,22 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {private::transmute_unchecked_size(self)}
     }
     #[inline]
-    fn array_chunks_exact_ref<const M: usize>(&self) -> [&Self::Array<T, M>; N / M]
+    fn array_chunks_exact_ref<const M: usize>(&self) -> &[Self::Array<T, M>; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:
     {
         let mut ptr = self as *const T;
-
-        ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(M)};
-            slice
-        })
+        unsafe {core::mem::transmute(ptr)}
     }
     #[inline]
-    fn array_chunks_exact_mut<const M: usize>(&mut self) -> [&mut Self::Array<T, M>; N / M]
+    fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut [Self::Array<T, M>; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:
     {
         let mut ptr = self as *mut T;
-
-        ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(M)};
-            slice
-        })
+        unsafe {core::mem::transmute(ptr)}
     }
     
     #[inline]

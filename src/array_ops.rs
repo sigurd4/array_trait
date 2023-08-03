@@ -53,6 +53,11 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:;
 
+    fn maintain_size<const M: usize>(self) -> Self::Array<T, M>
+    where
+        [(); M - N]:,
+        [(); N - M]:;
+
     /// Converts an array into a const interator.
     /// 
     /// The const iterator does not implement [std::iter::Iterator](Iterator), and as such is more limited in its usage.
@@ -64,16 +69,18 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// #![feature(inline_const)]
     /// #![feature(const_trait_impl)]
     /// #![feature(const_mut_refs)]
+    /// #![feature(const_deref)]
     /// 
+    /// use core::{mem::ManuallyDrop, ops::DerefMut};
     /// use array_trait::*;
     /// 
     /// const A: [u8; 3] = [1, 2, 3];
     /// 
     /// const A_SUM: u8 = const {
-    ///     let mut iter = A.into_const_iter();
+    ///     let mut iter = ManuallyDrop::new(A.into_const_iter());
     ///     let mut sum = 0;
     /// 
-    ///     while let Some(b) = iter.next()
+    ///     while let Some(b) = iter.deref_mut().next()
     ///     {
     ///         sum += b;
     ///     }
@@ -232,17 +239,13 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         
     fn into_shift_right(self, item: T) -> (Self, T);
 
-    fn rotate_right2<const M: usize>(&mut self)
-    where
-        [(); N - M]:;
+    fn rotate_left2(&mut self, n: usize);
 
-    fn rotate_left2<const M: usize>(&mut self)
-    where
-        [(); N - M]:;
-    
-    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M];
+    fn rotate_right2(&mut self, n: usize);
 
     fn shift_many_left<const M: usize>(&mut self, items: [T; M]) -> [T; M];
+    
+    fn shift_many_right<const M: usize>(&mut self, items: [T; M]) -> [T; M];
     
     fn shift_left(&mut self, item: T) -> T;
 
@@ -648,7 +651,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut array = MaybeUninit::uninit_array();
         let mut i = 0;
-        while i < Self::LENGTH
+        while i != N
         {
             array[i] = MaybeUninit::new(fill(i));
             i += 1;
@@ -661,11 +664,18 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         F: ~const FnMut(usize) -> T + ~const Destruct
     {
         let mut array = MaybeUninit::uninit_array();
-        let mut i = N - 1;
-        while let Some(i_next) = i.checked_sub(1)
+        if N != 0
         {
-            array[i] = MaybeUninit::new(fill(i));
-            i = i_next;
+            let mut i = N - 1;
+            loop
+            {
+                array[i] = MaybeUninit::new(fill(i));
+                if i == 0
+                {
+                    break
+                }
+                i -= 1;
+            }
         }
         unsafe {MaybeUninit::array_assume_init(array)}
     }
@@ -693,12 +703,20 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
     {
-        let mut iter = self.into_const_iter();
-        ArrayOps::fill(const move |i| match iter.next()
+        let mut array = unsafe {MaybeUninit::array_assume_init(MaybeUninit::uninit_array())};
+        let mut ptr = &mut array as *mut T;
+
+        unsafe {core::ptr::copy_nonoverlapping(&self as *const T, ptr, N.min(M))};
+
+        let mut i = N;
+        ptr = unsafe {ptr.add(N)};
+        while i < M
         {
-            Some(item) => item,
-            None => fill(i)
-        })
+            unsafe {core::ptr::write(ptr, fill(i))};
+            i += 1;
+            ptr = unsafe {ptr.add(1)};
+        }
+        array
     }
     #[inline]
     fn rresize<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
@@ -706,8 +724,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
     {
-        let mut iter = self.into_const_iter_reverse();
-        ArrayOps::rfill(const move |i| match iter.next()
+        let mut iter = ManuallyDrop::new(self.into_const_iter_reverse());
+        ArrayOps::rfill(const move |i| match iter.deref_mut().next()
         {
             Some(item) => item,
             None => fill(i)
@@ -757,35 +775,39 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn rotate_left2<const M: usize>(&mut self)
-    where
-        [(); N - M]:
+    fn rotate_left2(&mut self, n: usize)
     {
-        let (left_take, right_take) = self.split_array_mut2::<M>();
-        let (mut left, mut right) = (
-            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
-            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
-        );
-        let (left_put, right_put) = self.rsplit_array_mut2::<M>();
-        core::mem::swap(left_put, right.deref_mut());
-        core::mem::swap(right_put, left.deref_mut());
-        core::mem::forget((left, right));
+        let ptr = self as *mut T;
+        
+        let left = n % N;
+        let right = N - left;
+
+        unsafe {
+            let mut buffer: ManuallyDrop<[T; N]> = ManuallyDrop::new(MaybeUninit::assume_init(MaybeUninit::uninit()));
+            let buf_ptr = buffer.deref_mut() as *mut T;
+
+            core::ptr::copy_nonoverlapping(ptr, buf_ptr, N);
+            core::ptr::copy_nonoverlapping(buf_ptr, ptr.add(right), left);
+            core::ptr::copy_nonoverlapping(buf_ptr.add(left), ptr, right);
+        }
     }
 
     #[inline]
-    fn rotate_right2<const M: usize>(&mut self)
-    where
-        [(); N - M]:
+    fn rotate_right2(&mut self, n: usize)
     {
-        let (left_take, right_take) = self.rsplit_array_mut2::<M>();
-        let (mut left, mut right) = (
-            ManuallyDrop::new(core::mem::replace(left_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})),
-            ManuallyDrop::new(core::mem::replace(right_take, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())}))
-        );
-        let (left_put, right_put) = self.split_array_mut2::<M>();
-        core::mem::swap(left_put, right.deref_mut());
-        core::mem::swap(right_put, left.deref_mut());
-        core::mem::forget((left, right));
+        let ptr = self as *mut T;
+        
+        let right = n % N;
+        let left = N - right;
+
+        unsafe {
+            let mut buffer: ManuallyDrop<[T; N]> = ManuallyDrop::new(MaybeUninit::assume_init(MaybeUninit::uninit()));
+            let buf_ptr = buffer.deref_mut() as *mut T;
+
+            core::ptr::copy_nonoverlapping(ptr, buf_ptr, N);
+            core::ptr::copy_nonoverlapping(buf_ptr, ptr.add(right), left);
+            core::ptr::copy_nonoverlapping(buf_ptr.add(left), ptr, right);
+        }
     }
 
     #[inline]
@@ -793,11 +815,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let (overflow, mut buffer): (ManuallyDrop<[T; M]>, ManuallyDrop<Self>) = unsafe {
             private::transmute_unchecked_size(
-                (core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())), items)
+                (private::take_and_leave_uninit(self), items)
             )
         };
         core::mem::swap(self, buffer.deref_mut());
-        core::mem::forget(buffer);
         ManuallyDrop::into_inner(overflow)
     }
 
@@ -806,11 +827,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let (mut buffer, overflow): (ManuallyDrop<Self>, ManuallyDrop<[T; M]>) = unsafe {
             private::transmute_unchecked_size(
-                (items, core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())))
+                (items, private::take_and_leave_uninit(self))
             )
         };
         core::mem::swap(self, buffer.deref_mut());
-        core::mem::forget(buffer);
         ManuallyDrop::into_inner(overflow)
     }
     
@@ -819,11 +839,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let (overflow, mut buffer): (ManuallyDrop<T>, ManuallyDrop<Self>) = unsafe {
             private::transmute_unchecked_size(
-                (core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())), item)
+                (private::take_and_leave_uninit(self), item)
             )
         };
         core::mem::swap(self, buffer.deref_mut());
-        core::mem::forget(buffer);
         ManuallyDrop::into_inner(overflow)
     }
 
@@ -832,11 +851,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let (mut buffer, overflow): (ManuallyDrop<Self>, ManuallyDrop<T>) = unsafe {
             private::transmute_unchecked_size(
-                (item, core::mem::replace(self, MaybeUninit::assume_init(MaybeUninit::uninit())))
+                (item, private::take_and_leave_uninit(self))
             )
         };
         core::mem::swap(self, buffer.deref_mut());
-        core::mem::forget(buffer);
         ManuallyDrop::into_inner(overflow)
     }
 
@@ -856,9 +874,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); M - N]:
     {
         let filled: [T; M - N] = ArrayOps::fill(const move |i| fill(i + N));
-        unsafe {
-            private::transmute_unchecked_size((self, filled))
-        }
+        unsafe {private::transmute_unchecked_size((self, filled))}
     }
     #[inline]
     fn rextend<const M: usize, F>(self, fill: F) -> Self::Array<T, M>
@@ -867,9 +883,16 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); M - N]:
     {
         let filled: [T; M - N] = ArrayOps::fill(fill);
-        unsafe {
-            private::transmute_unchecked_size((filled, self))
-        }
+        unsafe {private::transmute_unchecked_size((filled, self))}
+    }
+    
+    #[inline]
+    fn maintain_size<const M: usize>(self) -> Self::Array<T, M>
+    where
+        [(); M - N]:,
+        [(); N - M]:
+    {
+        unsafe {private::transmute_unchecked_size(self)}
     }
 
     #[inline]
@@ -899,23 +922,23 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         M: ~const FnMut<(T,)> + ~const Destruct
     {
-        let mut iter = self.into_const_iter();
-        ArrayOps::fill(const |_| map(iter.next().unwrap()))
+        let mut iter = ManuallyDrop::new(self.into_const_iter());
+        ArrayOps::fill(const |_| map(iter.deref_mut().next().unwrap()))
     }
     
     #[inline]
     fn zip2<O>(self, other: Self::Array<O, N>) -> Self::Array<(T, O), N>
     {
-        let mut iter_self = self.into_const_iter();
-        let mut iter_other = other.into_const_iter();
-        ArrayOps::fill(const |_| (iter_self.next().unwrap(), iter_other.next().unwrap()))
+        let mut iter_self = ManuallyDrop::new(self.into_const_iter());
+        let mut iter_other = ManuallyDrop::new(other.into_const_iter());
+        ArrayOps::fill(const |_| (iter_self.deref_mut().next().unwrap(), iter_other.deref_mut().next().unwrap()))
     }
     
     #[inline]
     fn enumerate(self) -> Self::Array<(usize, T), N>
     {
-        let mut iter_self = self.into_const_iter();
-        ArrayOps::fill(const |i| (i, iter_self.next().unwrap()))
+        let mut iter_self = ManuallyDrop::new(self.into_const_iter());
+        ArrayOps::fill(const |i| (i, iter_self.deref_mut().next().unwrap()))
     }
 
     #[inline]
@@ -923,11 +946,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         T: ~const Sub<T> + Copy + ~const Destruct
     {
-        let mut iter_self = self.into_const_iter();
-        if let Some(mut x0) = iter_self.next()
+        let mut iter_self = ManuallyDrop::new(self.into_const_iter());
+        if let Some(mut x0) = iter_self.deref_mut().next()
         {
             ArrayOps::fill(const move |_| {
-                let x = iter_self.next().unwrap();
+                let x = iter_self.deref_mut().next().unwrap();
                 let dx = x - x0;
                 x0 = x;
                 dx
@@ -935,9 +958,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         }
         else
         {
-            unsafe {
-                private::transmute_unchecked_size::<[<T as Sub<T>>::Output; 0], _>([])
-            }
+            unsafe {private::transmute_unchecked_size::<[<T as Sub<T>>::Output; 0], _>([])}
         }
     }
     
@@ -946,11 +967,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         I: ~const Sub<I, Output = T> + Copy + ~const Destruct
     {
-        let mut iter_self = array.into_const_iter();
-        if let Some(mut x0) = iter_self.next()
+        let mut iter_self = ManuallyDrop::new(array.into_const_iter());
+        if let Some(mut x0) = iter_self.deref_mut().next()
         {
             ArrayOps::fill(const move |_| {
-                let x = iter_self.next().unwrap();
+                let x = iter_self.deref_mut().next().unwrap();
                 let dx = x - x0;
                 x0 = x;
                 dx
@@ -958,9 +979,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         }
         else
         {
-            unsafe {
-                private::transmute_unchecked_size::<[T; 0], _>([])
-            }
+            unsafe {private::transmute_unchecked_size::<[T; 0], _>([])}
         }
     }
 
@@ -969,12 +988,12 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         where
             T: ~const AddAssign<T> + Copy + ~const Destruct
     {
-        let mut iter_self = self.into_const_iter();
-        if let Some(mut x_accum) = iter_self.next()
+        let mut iter_self = ManuallyDrop::new(self.into_const_iter());
+        if let Some(mut x_accum) = iter_self.deref_mut().next()
         {
             ArrayOps::fill(const move |_| {
                 let xi = x_accum;
-                if let Some(x) = iter_self.next()
+                if let Some(x) = iter_self.deref_mut().next()
                 {
                     x_accum += x;
                 }
@@ -983,9 +1002,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         }
         else
         {
-            unsafe {
-                private::transmute_unchecked_size::<[T; 0], _>([])
-            }
+            unsafe {private::transmute_unchecked_size::<[T; 0], _>([])}
         }
     }
 
@@ -994,35 +1011,32 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         R: ~const FnMut(T, T) -> T + ~const Destruct
     {
-        let mut iter = self.into_const_iter();
-
-        let mut next = ManuallyDrop::new(iter.next());
-        let mut reduction = if next.deref().is_some()
-        {
-            ManuallyDrop::into_inner(next).unwrap()
-        }
-        else
+        let this = ManuallyDrop::new(self);
+        if N == 0
         {
             return None
-        };
-        while {
-            next = ManuallyDrop::new(iter.next());
-            next.deref().is_some()
         }
-        {
-            let x = ManuallyDrop::into_inner(next).unwrap();
-            reduction = reduce(reduction, x);
+        let mut ptr = this.deref() as *const T;
+        let mut i = 0;
+        unsafe {
+            let mut reduction = core::ptr::read(ptr);
+            while i < N
+            {
+                reduction = reduce(reduction, core::ptr::read(ptr));
+                ptr = ptr.add(1);
+                i += 1;
+            }
+            Some(reduction)
         }
-        Some(reduction)
     }
     
     fn sum(self) -> T
     where
         T: ~const Default + ~const AddAssign
     {
-        let mut iter = self.into_const_iter();
+        let mut iter = ManuallyDrop::new(self.into_const_iter());
 
-        let mut next = ManuallyDrop::new(iter.next());
+        let mut next = ManuallyDrop::new(iter.deref_mut().next());
         let mut reduction = if next.deref().is_some()
         {
             ManuallyDrop::into_inner(next).unwrap()
@@ -1032,7 +1046,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
             return Default::default()
         };
         while {
-            next = ManuallyDrop::new(iter.next());
+            next = ManuallyDrop::new(iter.deref_mut().next());
             next.deref().is_some()
         }
         {
@@ -1082,26 +1096,34 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         [(); M - 1]:
     {
-        let mut ptr = self as *const T;
+        let start = self as *const T;
+        let mut ptr = start;
 
-        (ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(1)};
-            slice
-        }), unsafe {core::mem::transmute(ptr)})
+        unsafe {(
+            ArrayOps::fill(const |_| {
+                let slice = core::mem::transmute(ptr);
+                ptr = ptr.add(1);
+                slice
+            }),
+            core::mem::transmute(start.add(N - N % M))
+        )}
     }
     #[inline]
     fn array_spread_mut<const M: usize>(&mut self) -> ([&mut Self::PaddedArray<T, M, {N / M}>; M], &mut Self::Array<T, {N % M}>)
     where
         [(); M - 1]:
     {
-        let mut ptr = self as *mut T;
+        let start = self as *mut T;
+        let mut ptr = start;
 
-        (ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(1)};
-            slice
-        }), unsafe {core::mem::transmute(ptr)})
+        unsafe {(
+            ArrayOps::fill(const |_| {
+                let slice = core::mem::transmute(ptr);
+                ptr = ptr.add(1);
+                slice
+            }),
+            core::mem::transmute(start.add(N - N % M))
+        )}
     }
     
     #[inline]
@@ -1121,13 +1143,16 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); M - 1]:
     {
         let start = self as *const T;
-        let mut ptr = unsafe {start.add(Self::LENGTH % M)};
+        let mut ptr = unsafe {start.add(N % M)};
 
-        (unsafe {core::mem::transmute(start)}, ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(1)};
-            slice
-        }))
+        unsafe {(
+            core::mem::transmute(start),
+            ArrayOps::fill(const |_| {
+                let slice = core::mem::transmute(ptr);
+                ptr = ptr.add(1);
+                slice
+            })
+        )}
     }
     #[inline]
     fn array_rspread_mut<const M: usize>(&mut self) -> (&mut [T; N % M], [&mut Self::PaddedArray<T, M, {N / M}>; M])
@@ -1135,13 +1160,16 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); M - 1]:
     {
         let start = self as *mut T;
-        let mut ptr = unsafe {start.add(Self::LENGTH % M)};
+        let mut ptr = unsafe {start.add(N % M)};
 
-        (unsafe {core::mem::transmute(start)}, ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
-            ptr = unsafe {ptr.add(1)};
-            slice
-        }))
+        unsafe {(
+            core::mem::transmute(start),
+            ArrayOps::fill(const |_| {
+                let slice = core::mem::transmute(ptr);
+                ptr = ptr.add(1);
+                slice
+            })
+        )}
     }
     #[inline]
     fn array_spread_exact<const M: usize>(self) -> [Self::Array<T, {N / M}>; M]
@@ -1191,14 +1219,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     #[inline]
     fn array_chunks_ref<const M: usize>(&self) -> (&[Self::Array<T, M>; N / M], &Self::Array<T, {N % M}>)
     {
-        let mut ptr = self as *const T;
-        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - (N % M))))}
+        let ptr = self as *const T;
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - N % M)))}
     }
     #[inline]
     fn array_chunks_mut<const M: usize>(&mut self) -> (&mut [Self::Array<T, M>; N / M], &mut Self::Array<T, {N % M}>)
     {
-        let mut ptr = self as *mut T;
-        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - (N % M))))}
+        let ptr = self as *mut T;
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - N % M)))}
     }
 
     #[inline]
@@ -1233,8 +1261,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); 0 - N % M]:,
         [(); N / M]:
     {
-        let mut ptr = self as *const T;
-        unsafe {core::mem::transmute(ptr)}
+        unsafe {core::mem::transmute(self as *const T)}
     }
     #[inline]
     fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut [Self::Array<T, M>; N / M]
@@ -1242,8 +1269,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); 0 - N % M]:,
         [(); N / M]:
     {
-        let mut ptr = self as *mut T;
-        unsafe {core::mem::transmute(ptr)}
+        unsafe {core::mem::transmute(self as *mut T)}
     }
     
     #[inline]
@@ -1323,7 +1349,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); N - M]:
     {
         let ptr = self as *mut T;
-        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(Self::LENGTH - M)))}
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - M)))}
     }
     #[inline]
     fn rsplit_array_ref2<const M: usize>(&self) -> (&Self::Array<T, {N - M}>, &Self::Array<T, M>)
@@ -1331,7 +1357,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); N - M]:
     {
         let ptr = self as *const T;
-        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(Self::LENGTH - M)))}
+        unsafe {(core::mem::transmute(ptr), core::mem::transmute(ptr.add(N - M)))}
     }
 
     #[inline]

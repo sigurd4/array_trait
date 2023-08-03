@@ -1,8 +1,14 @@
-use core::{mem::MaybeUninit, borrow::{Borrow, BorrowMut}, ops::{Deref, DerefMut}};
+use core::{mem::{MaybeUninit, ManuallyDrop}, borrow::{Borrow, BorrowMut}, ops::{Deref, DerefMut}};
 
-pub struct Padded<T, const WIDTH: usize>([MaybeUninit<T>; WIDTH])
+#[repr(C)]
+pub struct Padded<T, const WIDTH: usize>
 where
-    [(); WIDTH - 1]:;
+    [(); WIDTH - 1]:
+{
+    value: T,
+    _pad: ManuallyDrop<MaybeUninit<[T; WIDTH - 1]>>
+}
+
 impl<T, const WIDTH: usize> core::fmt::Debug for Padded<T, WIDTH>
 where
     [(); WIDTH - 1]:,
@@ -33,24 +39,26 @@ where
     #[inline]
     pub const fn new(value: T) -> Self
     {
-        let mut array = MaybeUninit::uninit_array();
-        array[0] = MaybeUninit::new(value);
-        Self(array)
+        Self
+        {
+            value,
+            _pad: ManuallyDrop::new(MaybeUninit::uninit())
+        }
     }
     #[inline]
     pub fn into_inner(self) -> T
     {
-        unsafe {MaybeUninit::assume_init(self.0.into_iter().next().unwrap())}
+        self.value
     }
     #[inline]
     pub const fn borrow(&self) -> &T
     {
-        unsafe {self.0[0].assume_init_ref()}
+        &self.value
     }
     #[inline]
     pub const fn borrow_mut(&mut self) -> &mut T
     {
-        unsafe {self.0[0].assume_init_mut()}
+        &mut self.value
     }
 }
 impl<T, const WIDTH: usize> const Borrow<T> for Padded<T, WIDTH>

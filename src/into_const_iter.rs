@@ -1,48 +1,76 @@
-use core::{mem::MaybeUninit};
+use core::{mem::ManuallyDrop};
 
 use crate::{private, ConstIterator};
 
-pub struct IntoConstIter<T, const LENGTH: usize, const DIR: bool>
+pub struct IntoConstIter<T, const LENGTH: usize, const DIR: bool, const ENUMERATE: bool = false>
 {
-    data: [MaybeUninit<T>; LENGTH],
-    i: Option<usize>
+    data: [ManuallyDrop<T>; LENGTH],
+    i: usize
 }
 
-impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR>
-{   
+impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> IntoConstIter<T, N, DIR, ENUMERATE>
+{
     #[inline]
     pub const fn from(array: [T; N]) -> Self
     {
         Self {
             data: unsafe {private::transmute_unchecked_size(array)},
-            i: Some(if DIR {0} else {N - 1})
+            i: if DIR {0} else {N}
         }
     }
+}
 
+impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR, false>
+{
     #[inline]
     pub const fn next(&mut self) -> Option<T>
     {
-        if let Some(i) = self.i.as_mut()
+        if self.i != if DIR {N} else {0}
         {
-            if *i < N
+            if !DIR
             {
-                let mut out = MaybeUninit::uninit();
-                core::mem::swap(&mut out, &mut self.data[*i]);
-                if DIR
-                {
-                    self.i = i.checked_add(1);
-                }
-                else
-                {
-                    self.i = i.checked_sub(1);
-                }
-                return Some(unsafe {MaybeUninit::assume_init(out)})
+                self.i -= 1;
             }
+            let out = unsafe {core::ptr::read(core::mem::transmute(&self.data[self.i]))};
+            if DIR
+            {
+                self.i += 1;
+            }
+            return Some(out)
+        }
+        None
+    }
+
+    pub const fn enumerate(self) -> IntoConstIter<T, N, DIR, true>
+    {
+        unsafe {private::transmute_unchecked_size(self)}
+    }
+}
+
+impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR, true>
+{
+    #[inline]
+    pub const fn next(&mut self) -> Option<(usize, T)>
+    {
+        if self.i != if DIR {N} else {0}
+        {
+            if !DIR
+            {
+                self.i -= 1;
+            }
+            let i = self.i;
+            let out = unsafe {core::ptr::read(core::mem::transmute(&self.data[self.i]))};
+            if DIR
+            {
+                self.i += 1;
+            }
+            return Some((i, out))
         }
         None
     }
 }
-impl<T, const N: usize, const DIR: bool> const From<[T; N]> for IntoConstIter<T, N, DIR>
+
+impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> const From<[T; N]> for IntoConstIter<T, N, DIR, ENUMERATE>
 {
     #[inline]
     fn from(value: [T; N]) -> Self
@@ -50,7 +78,7 @@ impl<T, const N: usize, const DIR: bool> const From<[T; N]> for IntoConstIter<T,
         Self::from(value)
     }
 }
-impl<T, const N: usize, const DIR: bool> const ConstIterator for IntoConstIter<T, N, DIR>
+impl<T, const N: usize, const DIR: bool> const ConstIterator for IntoConstIter<T, N, DIR, false>
 {
     type Item<'a> = T
     where
@@ -60,5 +88,35 @@ impl<T, const N: usize, const DIR: bool> const ConstIterator for IntoConstIter<T
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>
     {
         Self::next(self)
+    }
+}
+impl<T, const N: usize, const DIR: bool> const ConstIterator for IntoConstIter<T, N, DIR, true>
+{
+    type Item<'a> = (usize, T)
+    where
+        Self: 'a;
+
+    #[inline]
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>
+    {
+        Self::next(self)
+    }
+}
+impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> Drop for IntoConstIter<T, N, DIR, ENUMERATE>
+{
+    fn drop(&mut self)
+    {
+        while self.i != if DIR {N} else {0}
+        {
+            if !DIR
+            {
+                self.i -= 1;
+            }
+            unsafe {ManuallyDrop::drop(&mut self.data[self.i])};
+            if DIR
+            {
+                self.i += 1;
+            }
+        }
     }
 }

@@ -1,5 +1,7 @@
 use super::*;
 
+use core::{mem::ManuallyDrop, ops::{Deref, DerefMut}};
+
 #[const_trait]
 pub trait ArrayNd<const N: usize>: private::Array + ArrayPrereq
 {
@@ -34,18 +36,28 @@ macro_rules! nd {
 }
 
 macro_rules! fill_nd {
-    (($fill:ident, $i:ident, $array:ident)) => {
+    (($fill:ident, $i:ident, $array:ident); $($c:ident)*) => {
         core::mem::swap($array, &mut MaybeUninit::new($fill($i)));
     };
-    (($fill:ident, $i:ident, $array:ident) $a:ident $($b:ident)*) => {
-        const J: usize = count!($($b)*);
+    (($fill:ident, $i:ident, $array:ident) $a:ident $($b:ident)*; $($c:ident)*) => {
+        const J: usize = count!($($c)*);
         $i[J] = 0;
         while $i[J] < $a
         {
             let array = &mut $array[$i[J]];
-            fill_nd!(($fill, $i, array) $($b)*);
+            fill_nd!(($fill, $i, array) $($b)*; $a $($c)*);
             $i[J] += 1;
         }
+    };
+}
+
+macro_rules! index_nd {
+    (($this:tt.$fn:ident($i:ident)) $a:ident; $($c:ident)*) => {
+        $this.$fn($i[count!{$($c)*}])
+    };
+    (($this:tt.$fn:ident($i:ident)) $a:ident $($b:ident)+; $($c:ident)*) => {
+        $this.$fn($i[count!{$($c)*}])
+            .and_then(const |item| index_nd!{(item.$fn($i)) $($b)+; $a $($c)*})
     };
 }
 
@@ -68,11 +80,11 @@ macro_rules! impl_nd_array {
                 let mut i = [0; {count!{$a $($($b)+)?}}];
                 let mut array: nd!{MaybeUninit<T>; $a $($($b)+)?} =
                     unsafe {private::transmute_unchecked_size(MaybeUninit::<nd!{MaybeUninit<T>; $($($b)+)?}>::uninit_array::<$a>())};
-                while i[count!{$($($b)+)?}] < $a
+                while i[0] < $a
                 {
-                    let array = &mut array[i[count!($($($b)*)?)]];
-                    fill_nd!((fill, i, array) $($($b)+)?);
-                    i[count!{$($($b)+)?}] += 1;
+                    let array = &mut array[i[0]];
+                    fill_nd!((fill, i, array) $($($b)+)?; $a);
+                    i[0] += 1;
                 }
                 unsafe {private::transmute_unchecked_size(array)}
             }
@@ -82,31 +94,37 @@ macro_rules! impl_nd_array {
             where
                 M: ~const FnMut<(T,)> + ~const Destruct
             {
-                let mut iter = self.flatten_nd_array().into_const_iter();
-                ArrayNdOps::fill_nd(const |_| map(iter.next().unwrap()))
+                let mut iter = ManuallyDrop::new(self.flatten_nd_array().into_const_iter());
+                ArrayNdOps::fill_nd(const |_| map(iter.deref_mut().next().unwrap()))
             }
             
             #[inline]
             fn enumerate_nd(self) -> Self::Mapped<([usize; {count!{$a $($($b)+)?}}], T)>
             {
-                let mut iter = self.flatten_nd_array().into_const_iter();
-                ArrayNdOps::fill_nd(const |i| (i, iter.next().unwrap()))
+                let mut iter = ManuallyDrop::new(self.flatten_nd_array().into_const_iter());
+                ArrayNdOps::fill_nd(const |i| (i, iter.deref_mut().next().unwrap()))
             }
 
             #[inline]
             fn flatten_nd_array(self) -> [T; {flat_len!{$a $($($b)+)?}}]
+            where
+                [(); {flat_len!{$a $($($b)+)?}}]:
             {
                 unsafe {private::transmute_unchecked_size(self)}
             }
 
             #[inline]
             fn flatten_nd_array_ref(&self) -> &[T; {flat_len!{$a $($($b)+)?}}]
+            where
+                [(); {flat_len!{$a $($($b)+)?}}]:
             {
                 unsafe {core::mem::transmute(self)}
             }
 
             #[inline]
             fn flatten_nd_array_mut(&mut self) -> &mut [T; {flat_len!{$a $($($b)+)?}}]
+            where
+                [(); {flat_len!{$a $($($b)+)?}}]:
             {
                 unsafe {core::mem::transmute(self)}
             }
@@ -123,6 +141,7 @@ macro_rules! impl_nd_array {
                     y
                 })
             }
+            #[inline]
             fn each_mut_nd<B>(&mut self) -> Self::Mapped<&mut B>
             where
                 T: ~const BorrowMut<B>
@@ -135,12 +154,40 @@ macro_rules! impl_nd_array {
                 })
             }
             
-            fn reduce_nd<R>(self, reduce: R) -> Option<T>
+            fn reduce_nd<R>(self, mut reduce: R) -> Option<T>
             where
                 R: ~const FnMut(T, T) -> T + ~const Destruct,
                 T: ~const Destruct
             {
-                self.flatten_nd_array().reduce(reduce)
+                let this = ManuallyDrop::new(self);
+                if flat_len!{$a $($($b)+)?} == 0
+                {
+                    return None
+                }
+                let mut i = 0;
+                unsafe {
+                    let mut ptr = core::mem::transmute(this.deref());
+                    let mut reduction = core::ptr::read(ptr);
+                    while i < flat_len!{$a $($($b)+)?}
+                    {
+                        reduction = reduce(reduction, core::ptr::read(ptr));
+                        ptr = ptr.add(1);
+                        i += 1;
+                    }
+                    Some(reduction)
+                }
+            }
+
+            #[inline]
+            fn get_nd(&self, i: [usize; count!{$a $($($b)+)?}]) -> Option<&T>
+            {
+                index_nd!{(self.get(i)) $a $($($b)+)?;}
+            }
+
+            #[inline]
+            fn get_nd_mut(&mut self, i: [usize; count!{$a $($($b)+)?}]) -> Option<&mut T>
+            {
+                index_nd!{(self.get_mut(i)) $a $($($b)+)?;}
             }
         }
         $(impl_nd_array!($($b)+);)?
@@ -157,3 +204,4 @@ mod r#impl
         _57 _58 _59 _60 _61
     );
 }
+/* */

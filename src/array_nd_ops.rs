@@ -6,7 +6,7 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
 {
     type Mapped<M>: ~const ArrayNdOps<D, M, L>;
 
-    /// Fills an N-dimensional array.
+    /// Fills an N-dimensional array. Indices passed to fill-function are sorted from outermost to innermost.
     /// 
     /// # Example
     /// 
@@ -20,7 +20,7 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// 
     /// type T = u8;
     /// 
-    /// const ND: [[T; 3]; 3] = ArrayNdOps::fill_nd(const |[i, j]| 1 + i as T + 3*j as T);
+    /// const ND: [[T; 3]; 3] = ArrayNdOps::fill_nd(const |[i, j]| 1 + 3*i as T + j as T);
     /// 
     /// assert_eq!(ND, [
     ///     [1, 2, 3],
@@ -62,7 +62,7 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     where
         M: ~const FnMut<(T,)> + ~const Destruct;
 
-    /// Enumerates each element of an N-dimensional array
+    /// Enumerates each element of an N-dimensional array. Indices are sorted from outermost to innermost.
     /// 
     /// # Example
     /// 
@@ -87,9 +87,9 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// const ND_ENUM: [[([usize; 2], T); 3]; 3] = <[[T; 3]; 3] as ArrayNdOps<2, _, _>>::enumerate_nd(ND);
     /// 
     /// assert_eq!(ND_ENUM, [
-    ///     [([0, 0], 1), ([1, 0], 2), ([2, 0], 3)],
-    ///     [([0, 1], 4), ([1, 1], 5), ([2, 1], 6)],
-    ///     [([0, 2], 7), ([1, 2], 8), ([2, 2], 9)]
+    ///     [([0, 0], 1), ([0, 1], 2), ([0, 2], 3)],
+    ///     [([1, 0], 4), ([1, 1], 5), ([1, 2], 6)],
+    ///     [([2, 0], 7), ([2, 1], 8), ([2, 2], 9)]
     /// ]);
     /// ```
     fn enumerate_nd(self) -> Self::Mapped<([usize; D], T)>;
@@ -114,7 +114,9 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// const FLAT: [T; 9] = ND.flatten_nd_array();
     /// assert_eq!(FLAT, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
-    fn flatten_nd_array(self) -> [T; L];
+    fn flatten_nd_array(self) -> [T; L]
+    where
+        [(); L]:;
 
     /// Flattens one or multiple dimensions of an N-dimensional array-slice.
     /// 
@@ -136,7 +138,9 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// const FLAT: &[T; 9] = ND.flatten_nd_array_ref();
     /// assert_eq!(FLAT, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
-    fn flatten_nd_array_ref(&self) -> &[T; L];
+    fn flatten_nd_array_ref(&self) -> &[T; L]
+    where
+        [(); L]:;
     
     /// Flattens one or multiple dimensions of an N-dimensional array-slice
     /// 
@@ -167,7 +171,9 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     ///     [3, 2, 1]
     /// ]);
     /// ```
-    fn flatten_nd_array_mut(&mut self) -> &mut [T; L];
+    fn flatten_nd_array_mut(&mut self) -> &mut [T; L]
+    where
+        [(); L]:;
 
     fn each_ref_nd<B>(&self) -> Self::Mapped<&B>
     where
@@ -180,4 +186,70 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     where
         R: ~const FnMut(T, T) -> T + ~const Destruct,
         T: ~const Destruct;
+        
+    /// Retrieves the inner item using an array of indices, sorted from outermost to innermost, as a reference
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(const_closures)]
+    /// #![feature(const_option)]
+    /// #![feature(const_trait_impl)]
+    /// #![feature(generic_const_exprs)]
+    /// #![feature(const_mut_refs)]
+    /// 
+    /// use array_trait::ArrayNdOps;
+    /// 
+    /// const A: [[u8; 2]; 3] = [
+    ///     [1, 2],
+    ///     [3, 4],
+    ///     [5, 6]
+    /// ];
+    /// let b: [[u8; 2]; 3] = ArrayNdOps::fill_nd(|[i, j]| {
+    ///     let item = *A.get_nd([i, j]).unwrap();
+    ///     assert_eq!(item, A[i][j]);
+    ///     item
+    /// });
+    /// 
+    /// assert_eq!(A, b);
+    /// ```
+    fn get_nd(&self, i: [usize; D]) -> Option<&T>;
+    
+    /// Retrieves the inner item using an array of indices, sorted from outermost to innermost, as a mutable reference
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(const_closures)]
+    /// #![feature(const_option)]
+    /// #![feature(const_trait_impl)]
+    /// #![feature(generic_const_exprs)]
+    /// #![feature(const_mut_refs)]
+    /// 
+    /// use array_trait::ArrayNdOps;
+    /// 
+    /// const A: [[u8; 2]; 3] = [
+    ///     [1, 2],
+    ///     [3, 4],
+    ///     [5, 6]
+    /// ];
+    /// let mut b: [[u8; 2]; 3] = [[0; 2]; 3];
+    /// 
+    /// let mut i = 0;
+    /// while i < 3
+    /// {
+    ///     let mut j = 0;
+    ///     while j < 2
+    ///     {
+    ///         let item = *A.get_nd([i, j]).unwrap();
+    ///         assert_eq!(item, A[i][j]);
+    ///         *b.get_nd_mut([i, j]).unwrap() = item;
+    ///         j += 1;
+    ///     }
+    ///     i += 1;
+    /// }
+    /// 
+    /// assert_eq!(A, b);
+    /// ```
+    fn get_nd_mut(&mut self, i: [usize; D]) -> Option<&mut T>;
 }

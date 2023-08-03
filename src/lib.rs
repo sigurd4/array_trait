@@ -21,6 +21,13 @@
 #![feature(const_replace)]
 #![feature(const_deref)]
 #![feature(const_refs_to_cell)]
+#![feature(const_slice_index)]
+#![feature(const_ptr_read)]
+#![feature(const_ptr_write)]
+#![feature(transmutability)]
+#![feature(const_maybe_uninit_as_mut_ptr)]
+#![feature(const_option_ext)]
+#![feature(const_borrow)]
 
 moddef::moddef!(
     flat(pub) mod {
@@ -48,7 +55,7 @@ use core::{
 
 mod private
 {
-    use core::mem::ManuallyDrop;
+    use core::mem::{ManuallyDrop, MaybeUninit, BikeshedIntrinsicFrom, Assume};
 
     #[const_trait]
     pub trait Array {}
@@ -63,12 +70,28 @@ mod private
     #[inline]
     pub(crate) const unsafe fn transmute_unchecked_size<A, B>(from: A) -> B
     {
-        #[cfg(test)]
-        if core::mem::size_of::<A>() != core::mem::size_of::<B>()
+        /*#[cfg(test)]
+        if core::mem::size_of::<A>() != core::mem::size_of::<B>() && core::mem::align_of::<A>() != core::mem::align_of::<B>()
         {
-            panic!("Cannot transmute due to unequal size")
-        }
+            panic!("Cannot transmute due to unequal size or alignment")
+        }*/
+        
+        /*let from = ManuallyDrop::new(from);
+        core::ptr::read(core::mem::transmute(from.deref()))*/
+
         ManuallyDrop::into_inner(unsafe {Transmutation {a: ManuallyDrop::new(from)}.b})
+    }
+
+    #[allow(unused)]
+    pub struct Context;
+
+    #[inline]
+    pub(crate) const unsafe fn transmute<A, B>(from: A) -> B
+    where
+        B: BikeshedIntrinsicFrom<A, Context, {Assume::LIFETIMES + Assume::SAFETY + Assume::VALIDITY}>
+    {
+        #[allow(deprecated)]
+        transmute_unchecked_size(from)
     }
 
     #[inline]
@@ -81,6 +104,12 @@ mod private
     pub(crate) const fn rsplit_array_mandrop<T, const N: usize, const M: usize>(a: [T; N]) -> (ManuallyDrop<[T; N - M]>, ManuallyDrop<[T; M]>)
     {
         unsafe {transmute_unchecked_size(a)}
+    }
+
+    #[inline]
+    pub(crate) const unsafe fn take_and_leave_uninit<T>(from: &mut T) -> T
+    {
+        core::mem::replace(from, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})
     }
 }
 
@@ -107,6 +136,8 @@ pub trait ArrayPrereq = Sized
 
 #[cfg(test)]
 mod tests {
+
+    use std::time::SystemTime;
 
     use super::*;
 
@@ -187,22 +218,80 @@ mod tests {
     }
 
     #[test]
-    fn rotate()
+    fn benchmark()
     {
-        let a = [1, 2, 3, 4, 5];
+        const N: usize = 64;
+        const M: usize = 256;
 
-        //a.rotate_right2::<4>();
-        println!("{:?}", a.into_shift_many_right([-1, -2, -3]));
+        let a: [[[u8; 2]; N]; M] = ArrayNdOps::fill_nd(const |i| i.map2(const |i| i as u8));
+
+        let t0 = SystemTime::now();
+        for m in 0..M
+        {
+            for n in 0..N
+            {
+                //<[u8; N]>::fill(|i| i as u8);
+                //a[m].truncate::<{N/2}>();
+                //a[m].resize::<{N/2}, _>(|i| [m as u8, i as u8]);
+                //let (matrix, _) = a[m].array_spread::<3>();
+                let _ = *a.get_nd([m, n, 0]).unwrap();
+            }
+        }
+        let t = t0.elapsed().unwrap();
+        println!("t = {:?}", t); //10.5832ms
     }
 
     #[test]
-    fn it_works()
+    fn rotate()
     {
-        let str = b"abcdefghijklmnopqrstuvwxyz".map(|c| (c as char).to_string());
+        let mut a = [1, 2, 3, 4, 5];
+
+        a.rotate_left2(2);
+        println!("{:?}", a);
+    }
+
+    #[test]
+    fn test_spread_align()
+    {
+        let str = b"abcdefghijklmnopqrstuvwxyz".map(|c| c as char);
         
+        println!("Alignment char = {}", core::mem::align_of::<char>());
+        println!("Alignment padded x3 char = {}", core::mem::align_of::<Padded<char, 3>>());
+        
+        println!("Alignment String = {}", core::mem::align_of::<String>());
+        println!("Alignment padded x3 String = {}", core::mem::align_of::<Padded<String, 3>>());
+
         println!("str: {:?}", str);
         println!("spread: {:?}", str.array_spread_ref::<3>());
         println!("chunks: {:?}", str.array_chunks_ref::<3>());
+
+        assert_eq!(
+            str.array_spread::<3>(),
+            (
+                [
+                    ['a', 'd', 'g', 'j', 'm', 'p', 's', 'v'],
+                    ['b', 'e', 'h', 'k', 'n', 'q', 't', 'w'],
+                    ['c', 'f', 'i', 'l', 'o', 'r', 'u', 'x']
+                ],
+                ['y', 'z']
+            )
+        );
+        assert_eq!(
+            str.array_chunks::<3>(),
+            (
+                [
+                    ['a', 'b', 'c'],
+                    ['d', 'e', 'f'],
+                    ['g', 'h', 'i'],
+                    ['j', 'k', 'l'],
+                    ['m', 'n', 'o'],
+                    ['p', 'q', 'r'],
+                    ['s', 't', 'u'],
+                    ['v', 'w', 'x']
+                ],
+                ['y', 'z']
+            )
+        );
     }
 
     #[test]

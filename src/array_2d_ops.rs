@@ -1,3 +1,5 @@
+use core::mem::ManuallyDrop;
+
 use super::*;
 
 #[const_trait]
@@ -32,25 +34,26 @@ impl<T, const W: usize, const H: usize> const Array2dOps<T, W, H> for [[T; W]; H
     #[inline]
     fn transpose(self) -> [[T; H]; W]
     {
-        let mut matrix: [[MaybeUninit<T>; W]; H] = unsafe {
-            private::transmute_unchecked_size(self)
-        };
-        let mut matrix_t: [[MaybeUninit<T>; H]; W] = unsafe {
-            private::transmute_unchecked_size(MaybeUninit::<[T; H]>::uninit_array::<W>())
-        };
+        let this = ManuallyDrop::new(self);
+        let mut this_t: [[T; H]; W] = unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())};
         let mut i = 0;
-        while i < H
+        while i != H
         {
             let mut j = 0;
-            while j < W
+            while j != W
             {
-                core::mem::swap(&mut matrix_t[j][i], &mut matrix[i][j]);
+                unsafe {core::ptr::copy_nonoverlapping(
+                    this[i][j].borrow() as *const T,
+                    &mut this_t[j][i] as *mut T,
+                    1
+                )};
                 j += 1;
             }
             i += 1;
         }
-        unsafe {
-            private::transmute_unchecked_size(matrix_t)
-        }
+        this_t
+        /*ArrayOps::fill(const |i| ArrayOps::fill(const |j| unsafe {
+            unsafe {core::ptr::read(&matrix.deref()[j][i] as *const T)}
+        }))*/
     }
 }

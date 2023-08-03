@@ -53,7 +53,17 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:;
 
-    fn maintain_size<const M: usize>(self) -> Self::Array<T, M>
+    fn reformulate_length<const M: usize>(self) -> Self::Array<T, M>
+    where
+        [(); M - N]:,
+        [(); N - M]:;
+    
+    fn reformulate_length_ref<const M: usize>(&self) -> &Self::Array<T, M>
+    where
+        [(); M - N]:,
+        [(); N - M]:;
+        
+    fn reformulate_length_mut<const M: usize>(&mut self) -> &mut Self::Array<T, M>
     where
         [(); M - N]:,
         [(); N - M]:;
@@ -887,12 +897,30 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn maintain_size<const M: usize>(self) -> Self::Array<T, M>
+    fn reformulate_length<const M: usize>(self) -> Self::Array<T, M>
     where
         [(); M - N]:,
         [(); N - M]:
     {
         unsafe {private::transmute_unchecked_size(self)}
+    }
+    
+    #[inline]
+    fn reformulate_length_ref<const M: usize>(&self) -> &Self::Array<T, M>
+    where
+        [(); M - N]:,
+        [(); N - M]:
+    {
+        unsafe {core::mem::transmute(self)}
+    }
+        
+    #[inline]
+    fn reformulate_length_mut<const M: usize>(&mut self) -> &mut Self::Array<T, M>
+    where
+        [(); M - N]:,
+        [(); N - M]:
+    {
+        unsafe {core::mem::transmute(self)}
     }
 
     #[inline]

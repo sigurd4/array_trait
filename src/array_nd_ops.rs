@@ -182,6 +182,24 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     where
         T: ~const BorrowMut<B>;
 
+    /// Reduces inner elements in N-dimensional array into one element, using a given operand
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(generic_const_exprs)]
+    /// 
+    /// use array_trait::ArrayNdOps;
+    /// 
+    /// const A: [[(u8, u8); 3]; 2] = [
+    ///     [(0, 0), (0, 1), (0, 2)],
+    ///     [(1, 0), (1, 1), (1, 2)]
+    /// ];
+    /// 
+    /// let r: (u8, u8) = A.reduce_nd(|(a1, a2), (b1, b2)| (a1 + b1, a2 + b2)).unwrap();
+    /// 
+    /// assert_eq!(r, (3, 6));
+    /// ```
     fn reduce_nd<R>(self, reduce: R) -> Option<T>
     where
         R: ~const FnMut(T, T) -> T + ~const Destruct,

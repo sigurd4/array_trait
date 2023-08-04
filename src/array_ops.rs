@@ -193,6 +193,21 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const AddAssign<T> + Copy;
 
+    /// Reduces elements in array into one element, using a given operand
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(generic_const_exprs)]
+    /// 
+    /// use array_trait::ArrayOps;
+    /// 
+    /// const A: [u8; 3] = [1, 2, 3];
+    /// 
+    /// let r: u8 = A.reduce(|a, b| a + b).unwrap();
+    /// 
+    /// assert_eq!(r, 6);
+    /// ```
     fn reduce<R>(self, reduce: R) -> Option<T>
     where
         R: ~const FnMut(T, T) -> T + ~const Destruct;
@@ -1050,8 +1065,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
             let mut reduction = core::ptr::read(ptr);
             while i < N
             {
-                reduction = reduce(reduction, core::ptr::read(ptr));
                 ptr = ptr.add(1);
+                reduction = reduce(reduction, core::ptr::read(ptr));
                 i += 1;
             }
             Some(reduction)

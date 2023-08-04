@@ -164,12 +164,12 @@ macro_rules! impl_nd_array {
                 }
                 let mut i = 1;
                 unsafe {
-                    let mut ptr = core::mem::transmute(this.deref());
+                    let mut ptr: *const T = core::mem::transmute(this.deref());
                     let mut reduction = core::ptr::read(ptr);
                     while i < flat_len!{$a $($($b)+)?}
                     {
-                        reduction = reduce(reduction, core::ptr::read(ptr));
                         ptr = ptr.add(1);
+                        reduction = reduce(reduction, core::ptr::read(ptr));
                         i += 1;
                     }
                     Some(reduction)

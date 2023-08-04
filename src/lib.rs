@@ -248,6 +248,19 @@ mod tests {
     }
 
     #[test]
+    fn reduce()
+    {
+        const A: [[(u8, u8); 3]; 2] = [
+            [(0, 0), (0, 1), (0, 2)],
+            [(1, 0), (1, 1), (1, 2)]
+        ];
+        
+        let r: (u8, u8) = A.reduce_nd(|(a1, a2), (b1, b2)| (a1 + b1, a2 + b2)).unwrap();
+        
+        assert_eq!(r, (3, 6));
+    }
+
+    #[test]
     fn rotate()
     {
         let mut a = [1, 2, 3, 4, 5];

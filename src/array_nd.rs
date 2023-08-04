@@ -24,28 +24,25 @@ macro_rules! nd {
     ($t:ty;) => {
         $t
     };
-    ($t:ty; $($n:ident)+, $a:ident) => {
+    ($t:ty; $a:ident) => {
         [$t; $a]
     };
-    ($t:ty; $($n:ident)+, $a:ident $($b:ident)+) => {
+    ($t:ty; $a:ident $($b:ident)+) => {
         [nd!{$t; $($b)+}; $a]
-    };
-    ($t:ty; $($n:ident)+) => {
-        nd!($t; $($n)+, $($n)+)
     };
 }
 
 macro_rules! fill_nd {
-    (($fill:ident, $i:ident, $array:ident); $($c:ident)*) => {
+    (($fill:ident, $dims:ident, $i:ident, $array:ident); $($c:ident)*) => {
         core::mem::swap($array, &mut MaybeUninit::new($fill($i)));
     };
-    (($fill:ident, $i:ident, $array:ident) $a:ident $($b:ident)*; $($c:ident)*) => {
+    (($fill:ident, $dims:ident, $i:ident, $array:ident) $a:ident $($b:ident)*; $($c:ident)*) => {
         const J: usize = count!($($c)*);
         $i[J] = 0;
-        while $i[J] < $a
+        while $i[J] < $dims[J]
         {
             let array = &mut $array[$i[J]];
-            fill_nd!(($fill, $i, array) $($b)*; $a $($c)*);
+            fill_nd!(($fill, $dims, $i, array) $($b)*; $a $($c)*);
             $i[J] += 1;
         }
     };
@@ -77,13 +74,14 @@ macro_rules! impl_nd_array {
             where
                 F: ~const FnMut([usize; count!{$a $($($b)+)?}]) -> T + ~const Destruct
             {
+                let dims: [usize; {count!{$a $($($b)+)?}}] = Self::DIMENSIONS;
                 let mut i = [0; {count!{$a $($($b)+)?}}];
                 let mut array: nd!{MaybeUninit<T>; $a $($($b)+)?} =
                     unsafe {private::transmute_unchecked_size(MaybeUninit::<nd!{MaybeUninit<T>; $($($b)+)?}>::uninit_array::<$a>())};
-                while i[0] < $a
+                while i[0] < dims[0]
                 {
                     let array = &mut array[i[0]];
-                    fill_nd!((fill, i, array) $($($b)+)?; $a);
+                    fill_nd!((fill, dims, i, array) $($($b)+)?; $a);
                     i[0] += 1;
                 }
                 unsafe {private::transmute_unchecked_size(array)}

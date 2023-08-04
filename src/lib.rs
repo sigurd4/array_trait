@@ -222,6 +222,8 @@ mod tests {
     {
         const N: usize = 64;
         const M: usize = 256;
+        
+        assert_eq!(<[[[u8; 2]; N]; M]>::DIMENSIONS, [M, N, 2]);
 
         let a: [[[u8; 2]; N]; M] = ArrayNdOps::fill_nd(const |i| i.map2(const |i| i as u8));
 
@@ -234,7 +236,11 @@ mod tests {
                 //a[m].truncate::<{N/2}>();
                 //a[m].resize::<{N/2}, _>(|i| [m as u8, i as u8]);
                 //let (matrix, _) = a[m].array_spread::<3>();
-                let _ = *a.get_nd([m, n, 0]).unwrap();
+                for k in 0..2
+                {
+                    let i = [m, n, k];
+                    let _ = *a.get_nd(i).unwrap();
+                }
             }
         }
         let t = t0.elapsed().unwrap();

@@ -18,6 +18,27 @@ impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> IntoConstIter<T,
             i: if DIR {0} else {N}
         }
     }
+    
+    pub const fn drop_copyable(self)
+    where
+        T: Copy
+    {
+        let mut this = ManuallyDrop::new(self);
+        let this_mut = this.deref_mut();
+
+        while this_mut.i != if DIR {N} else {0}
+        {
+            if !DIR
+            {
+                this_mut.i -= 1;
+            }
+            let _: T = unsafe {ManuallyDrop::into_inner(core::ptr::read(core::mem::transmute(&mut this_mut.data[this_mut.i])))};
+            if DIR
+            {
+                this_mut.i += 1;
+            }
+        }
+    }
 
     pub const fn drop(self)
     where

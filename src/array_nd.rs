@@ -162,7 +162,7 @@ macro_rules! impl_nd_array {
                 {
                     return None
                 }
-                let mut i = 0;
+                let mut i = 1;
                 unsafe {
                     let mut ptr = core::mem::transmute(this.deref());
                     let mut reduction = core::ptr::read(ptr);

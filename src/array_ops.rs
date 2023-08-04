@@ -1045,7 +1045,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
             return None
         }
         let mut ptr = this.deref() as *const T;
-        let mut i = 0;
+        let mut i = 1;
         unsafe {
             let mut reduction = core::ptr::read(ptr);
             while i < N

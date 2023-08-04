@@ -1,4 +1,4 @@
-use core::{mem::ManuallyDrop};
+use core::{mem::ManuallyDrop, marker::Destruct, ops::DerefMut};
 
 use crate::{private, ConstIterator};
 
@@ -16,6 +16,27 @@ impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> IntoConstIter<T,
         Self {
             data: unsafe {private::transmute_unchecked_size(array)},
             i: if DIR {0} else {N}
+        }
+    }
+
+    pub const fn drop(self)
+    where
+        T: ~const Destruct
+    {
+        let mut this = ManuallyDrop::new(self);
+        let this_mut = this.deref_mut();
+
+        while this_mut.i != if DIR {N} else {0}
+        {
+            if !DIR
+            {
+                this_mut.i -= 1;
+            }
+            let _: T = unsafe {ManuallyDrop::into_inner(core::ptr::read(core::mem::transmute(&mut this_mut.data[this_mut.i])))};
+            if DIR
+            {
+                this_mut.i += 1;
+            }
         }
     }
 }

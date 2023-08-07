@@ -619,15 +619,15 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         [(); 0 - N % M]:,
         [(); N / M]:;
         
-    fn array_chunks_exact_from<const M: usize>(array: Self::Array<<T as IntoIterator>::Item, {N*M}>) -> Self
+    fn array_chunks_exact_from(array: Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> Self
     where
         T: Array;
     
-    fn array_chunks_exact_from_ref<const M: usize>(array: &Self::Array<<T as IntoIterator>::Item, {N*M}>) -> &Self
+    fn array_chunks_exact_from_ref(array: &Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &Self
     where
         T: Array;
     
-    fn array_chunks_exact_from_mut<const M: usize>(array: &mut Self::Array<<T as IntoIterator>::Item, {N*M}>) -> &mut Self
+    fn array_chunks_exact_from_mut(array: &mut Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &mut Self
     where
         T: Array;
 
@@ -1328,7 +1328,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn array_chunks_exact_from<const M: usize>(array: Self::Array<<T as IntoIterator>::Item, {N*M}>) -> Self
+    fn array_chunks_exact_from(array: Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> Self
     where
         T: Array
     {
@@ -1336,7 +1336,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn array_chunks_exact_from_ref<const M: usize>(array: &Self::Array<<T as IntoIterator>::Item, {N*M}>) -> &Self
+    fn array_chunks_exact_from_ref(array: &Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &Self
     where
         T: Array
     {
@@ -1344,7 +1344,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn array_chunks_exact_from_mut<const M: usize>(array: &mut Self::Array<<T as IntoIterator>::Item, {N*M}>) -> &mut Self
+    fn array_chunks_exact_from_mut(array: &mut Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &mut Self
     where
         T: Array
     {

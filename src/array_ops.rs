@@ -626,18 +626,6 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         [(); 0 - N % M]:,
         [(); N / M]:;
-        
-    fn array_chunks_exact_from(array: Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> Self
-    where
-        T: Array;
-    
-    fn array_chunks_exact_from_ref(array: &Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &Self
-    where
-        T: Array;
-    
-    fn array_chunks_exact_from_mut(array: &mut Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &mut Self
-    where
-        T: Array;
 
     fn split_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, M>, Self::Array<T, N>);
     
@@ -1385,30 +1373,6 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); N / M]:
     {
         unsafe {core::mem::transmute(self as *mut T)}
-    }
-    
-    #[inline]
-    fn array_chunks_exact_from(array: Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> Self
-    where
-        T: Array
-    {
-        unsafe {private::transmute_unchecked_size(array)}
-    }
-    
-    #[inline]
-    fn array_chunks_exact_from_ref(array: &Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &Self
-    where
-        T: Array
-    {
-        unsafe {core::mem::transmute(array as *const _)}
-    }
-    
-    #[inline]
-    fn array_chunks_exact_from_mut(array: &mut Self::Array<<T as IntoIterator>::Item, {N*<T as Array>::LENGTH}>) -> &mut Self
-    where
-        T: Array
-    {
-        unsafe {core::mem::transmute(array as *mut _)}
     }
     
     #[inline]

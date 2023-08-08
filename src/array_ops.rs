@@ -70,9 +70,9 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         
     fn try_reformulate_length<const M: usize>(self) -> Result<Self::Array<T, M>, Self>;
     
-    fn try_reformulate_length_ref<const M: usize>(&self) -> Result<&Self::Array<T, M>, &Self>;
+    fn try_reformulate_length_ref<const M: usize>(&self) -> Option<&Self::Array<T, M>>;
         
-    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Result<&mut Self::Array<T, M>, &mut Self>;
+    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Option<&mut Self::Array<T, M>>;
 
     /// Converts an array into a const interator.
     /// 
@@ -902,7 +902,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         core::mem::swap(self, buffer.deref_mut());
         ManuallyDrop::into_inner(overflow)
     }
-
+    
     #[inline]
     fn into_single(self) -> T
         where
@@ -985,7 +985,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn try_reformulate_length_ref<const M: usize>(&self) -> Result<&Self::Array<T, M>, &Self>
+    fn try_reformulate_length_ref<const M: usize>(&self) -> Option<&Self::Array<T, M>>
     {
         if N == M
         {
@@ -993,12 +993,12 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         }
         else
         {
-            Err(self)
+            None
         }
     }
         
     #[inline]
-    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Result<&mut Self::Array<T, M>, &mut Self>
+    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Option<&mut Self::Array<T, M>>
     {
         if N == M
         {
@@ -1006,7 +1006,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         }
         else
         {
-            Err(self)
+            None
         }
     }
 

@@ -67,6 +67,12 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         [(); M - N]:,
         [(); N - M]:;
+        
+    fn try_reformulate_length<const M: usize>(self) -> Result<Self::Array<T, M>, Self>;
+    
+    fn try_reformulate_length_ref<const M: usize>(&self) -> Result<&Self::Array<T, M>, &Self>;
+        
+    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Result<&mut Self::Array<T, M>, &mut Self>;
 
     /// Converts an array into a const interator.
     /// 
@@ -280,6 +286,8 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         [(); 1 - N]:,
         [(); N - 1]:;
+        
+    fn try_into_single(self) -> Result<T, Self>;
 
     /// Distributes items of an array equally across a given width, then provides the rest as a separate array.
     /// 
@@ -905,6 +913,19 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
+    fn try_into_single(self) -> Result<T, Self>
+    {
+        if N == 1
+        {
+            Ok(unsafe {private::transmute_unchecked_size(self)})
+        }
+        else
+        {
+            Err(self)
+        }
+    }
+    
+    #[inline]
     fn extend<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
     where
         F: ~const FnMut(usize) -> T + ~const Destruct,
@@ -948,6 +969,45 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); N - M]:
     {
         unsafe {core::mem::transmute(self)}
+    }
+    
+    #[inline]
+    fn try_reformulate_length<const M: usize>(self) -> Result<Self::Array<T, M>, Self>
+    {
+        if N == M
+        {
+            Ok(unsafe {private::transmute_unchecked_size(self)})
+        }
+        else
+        {
+            Err(self)
+        }
+    }
+    
+    #[inline]
+    fn try_reformulate_length_ref<const M: usize>(&self) -> Result<&Self::Array<T, M>, &Self>
+    {
+        if N == M
+        {
+            Ok(unsafe {core::mem::transmute(self)})
+        }
+        else
+        {
+            Err(self)
+        }
+    }
+        
+    #[inline]
+    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Result<&mut Self::Array<T, M>, &mut Self>
+    {
+        if N == M
+        {
+            Ok(unsafe {core::mem::transmute(self)})
+        }
+        else
+        {
+            Err(self)
+        }
     }
 
     #[inline]

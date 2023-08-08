@@ -989,7 +989,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         if N == M
         {
-            Ok(unsafe {core::mem::transmute(self)})
+            Some(unsafe {core::mem::transmute(self)})
         }
         else
         {
@@ -1002,7 +1002,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         if N == M
         {
-            Ok(unsafe {core::mem::transmute(self)})
+            Some(unsafe {core::mem::transmute(self)})
         }
         else
         {

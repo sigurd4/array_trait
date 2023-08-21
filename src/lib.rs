@@ -135,6 +135,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn mod0()
+    {
+        let a = [1, 2, 3];
+        let c = a.array_chunks_exact::<1>();
+        println!("{:?}", c);
+    }
+
+    #[test]
     fn gpa()
     {
         #[repr(u8)]

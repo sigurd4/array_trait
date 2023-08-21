@@ -28,6 +28,7 @@
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_option_ext)]
 #![feature(const_borrow)]
+#![feature(const_transmute_copy)]
 
 moddef::moddef!(
     flat(pub) mod {
@@ -61,11 +62,6 @@ mod private
     pub trait Array {}
     impl<Item, const LENGTH: usize> const Array for [Item; LENGTH] {}
     
-    union Transmutation<A, B>
-    {
-        a: ManuallyDrop<A>,
-        b: ManuallyDrop<B>
-    }
     //#[deprecated]
     #[inline]
     pub(crate) const unsafe fn transmute_unchecked_size<A, B>(from: A) -> B
@@ -76,22 +72,19 @@ mod private
             panic!("Cannot transmute due to unequal size or alignment")
         }*/
         
-        /*let from = ManuallyDrop::new(from);
-        core::ptr::read(core::mem::transmute(from.deref()))*/
+        let b = unsafe {core::mem::transmute_copy(&from)};
+        core::mem::forget(from);
+        b
 
-        ManuallyDrop::into_inner(unsafe {Transmutation {a: ManuallyDrop::new(from)}.b})
-    }
+        //core::ptr::read(core::mem::transmute(&ManuallyDrop::new(from)))
+        
+        /*union Transmutation<A, B>
+        {
+            a: ManuallyDrop<A>,
+            b: ManuallyDrop<B>
+        }
 
-    #[allow(unused)]
-    pub struct Context;
-
-    #[inline]
-    pub(crate) const unsafe fn transmute<A, B>(from: A) -> B
-    where
-        B: BikeshedIntrinsicFrom<A, Context, {Assume::LIFETIMES + Assume::SAFETY + Assume::VALIDITY}>
-    {
-        #[allow(deprecated)]
-        transmute_unchecked_size(from)
+        unsafe {ManuallyDrop::into_inner(Transmutation {a: ManuallyDrop::new(a)}.b)}*/
     }
 
     #[inline]

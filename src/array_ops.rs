@@ -592,6 +592,22 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// Divides an array into chunks, with no rest.
     /// 
     /// The chunk length must be a factor of the array length, otherwise it will not compile.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// #![feature(generic_const_exprs)]
+    /// #![feature(generic_arg_infer)]
+    /// 
+    /// use array_trait::*;
+    /// 
+    /// let array = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+    /// 
+    /// let [lower_half, upper_half] = array.array_chunks_exact::<5>();
+    /// 
+    /// assert_eq!(lower_half, [0.0, 0.1, 0.2, 0.3, 0.4]);
+    /// assert_eq!(upper_half, [0.5, 0.6, 0.7, 0.8, 0.9]);
+    /// ```
     fn array_chunks_exact<const M: usize>(self) -> [Self::Array<T, M>; N / M]
     where
         [(); 0 - N % M]:,

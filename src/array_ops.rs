@@ -282,12 +282,18 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
 
     fn shift_right(&mut self, item: T) -> T;
 
-    fn into_single(self) -> T
+    fn from_item(item: T) -> Self::Array<T, 1>;
+    
+    fn from_item_ref(item: &T) -> &Self::Array<T, 1>;
+
+    fn from_item_mut(item: &mut T) -> &mut Self::Array<T, 1>;
+
+    fn into_single_item(self) -> T
     where
         [(); 1 - N]:,
         [(); N - 1]:;
         
-    fn try_into_single(self) -> Result<T, Self>;
+    fn try_into_single_item(self) -> Result<T, Self>;
 
     /// Distributes items of an array equally across a given width, then provides the rest as a separate array.
     /// 
@@ -908,16 +914,34 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn into_single(self) -> T
-        where
-            [(); 1 - N]:,
-            [(); N - 1]:
+    fn from_item(item: T) -> Self::Array<T, 1>
+    {
+        [item]
+    }
+    
+    #[inline]
+    fn from_item_ref(item: &T) -> &Self::Array<T, 1>
+    {
+        unsafe {core::mem::transmute(item)}
+    }
+
+    #[inline]
+    fn from_item_mut(item: &mut T) -> &mut Self::Array<T, 1>
+    {
+        unsafe {core::mem::transmute(item)}
+    }
+    
+    #[inline]
+    fn into_single_item(self) -> T
+    where
+        [(); 1 - N]:,
+        [(); N - 1]:
     {
         unsafe {private::transmute_unchecked_size(self)}
     }
     
     #[inline]
-    fn try_into_single(self) -> Result<T, Self>
+    fn try_into_single_item(self) -> Result<T, Self>
     {
         if N == 1
         {

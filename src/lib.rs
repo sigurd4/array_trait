@@ -1,6 +1,5 @@
 #![cfg_attr(not(test), no_std)]
 
-#![feature(generic_const_exprs)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(maybe_uninit_uninit_array)]
@@ -10,7 +9,6 @@
 #![feature(const_maybe_uninit_array_assume_init)]
 #![feature(const_swap)]
 #![feature(associated_const_equality)]
-#![feature(const_closures)]
 #![feature(const_option)]
 #![feature(associated_type_defaults)]
 #![feature(trait_alias)]
@@ -29,6 +27,22 @@
 #![feature(const_option_ext)]
 #![feature(const_borrow)]
 #![feature(const_transmute_copy)]
+#![feature(associated_type_bounds)]
+#![feature(slice_from_ptr_range)]
+#![feature(const_slice_from_mut_ptr_range)]
+#![feature(const_slice_from_ptr_range)]
+#![feature(auto_traits)]
+#![feature(negative_impls)]
+#![feature(tuple_trait)]
+#![feature(const_cmp)]
+#![feature(const_slice_from_raw_parts_mut)]
+#![feature(const_slice_split_at_not_mut)]
+#![feature(const_slice_split_at_mut)]
+
+#![feature(generic_const_exprs)]
+#![feature(adt_const_params)]
+#![feature(const_closures)]
+#![feature(inherent_associated_types)]
 
 moddef::moddef!(
     flat(pub) mod {
@@ -39,12 +53,17 @@ moddef::moddef!(
         array_nd_ops,
         array_2d_ops,
 
+        partitioned_array,
+        //partitioned_array_ops,
+
+        slice_ops,
+
         padded,
     
         const_iterator,
         into_const_iter,
         const_iter,
-        const_iter_mut
+        const_iter_mut,
     }
 );
 
@@ -56,15 +75,125 @@ use core::{
 
 mod private
 {
-    use core::mem::{ManuallyDrop, MaybeUninit, BikeshedIntrinsicFrom, Assume};
+    #[repr(C)]
+    pub struct Pair<L, R>
+    {
+        pub left: L,
+        pub right: R
+    }
+
+    impl<L, R> Pair<L, R>
+    {
+        pub const fn new(left: L, right: R) -> Self
+        {
+            Self {left, right}
+        }
+
+        pub const fn unpack(self) -> (L, R)
+        {
+            unsafe {
+                let mut left_right: (L, R) = uninit();
+
+                core::ptr::copy_nonoverlapping(&self.left as *const L, &mut left_right.0 as *mut L, 1);
+                core::ptr::copy_nonoverlapping(&self.right as *const R, &mut left_right.1 as *mut R, 1);
+
+                core::mem::forget(self);
+
+                left_right
+            }
+        }
+        
+        pub const fn unpack_mandrop(self) -> (ManuallyDrop<L>, ManuallyDrop<R>)
+        {
+            unsafe {
+                let mut left_right: (ManuallyDrop<L>, ManuallyDrop<R>) = uninit();
+
+                core::ptr::copy_nonoverlapping(&self.left as *const L, left_right.0.deref_mut() as *mut L, 1);
+                core::ptr::copy_nonoverlapping(&self.right as *const R, left_right.1.deref_mut() as *mut R, 1);
+
+                core::mem::forget(self);
+
+                left_right
+            }
+        }
+    }
+
+    impl<L, R> const From<(L, R)> for Pair<L, R>
+    {
+        fn from(left_right: (L, R)) -> Self
+        {
+            unsafe {
+                let mut pair: Self = uninit();
+    
+                core::ptr::copy_nonoverlapping(&left_right.0 as *const L, &mut pair.left as *mut L, 1);
+                core::ptr::copy_nonoverlapping(&left_right.1 as *const R, &mut pair.right as *mut R, 1);
+    
+                core::mem::forget(left_right);
+    
+                pair
+            }
+        }
+    }
+
+    impl<L, R> const Into<(L, R)> for Pair<L, R>
+    {
+        fn into(self) -> (L, R)
+        {
+            self.unpack()
+        }
+    }
+
+    use core::{mem::{ManuallyDrop, MaybeUninit}, ops::DerefMut};
+
+    use crate::{IntoConstIter, PartitionedArray};
 
     #[const_trait]
     pub trait Array {}
     impl<Item, const LENGTH: usize> const Array for [Item; LENGTH] {}
+
+    pub trait NotTuple {}
+    //impl<T> !NotTuple for T where T: Tuple {}
+
+    impl<L, R> NotTuple for Pair<L, R> {}
+    impl<T, const N: usize> NotTuple for [T; N] {}
+    impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> NotTuple for IntoConstIter<T, N, DIR, ENUMERATE> {}
+    impl<T, const P: &'static [usize]> NotTuple for PartitionedArray<T, P>
+    where
+        [(); crate::sum_len::<{P}>()]: {}
+
+    #[inline]
+    pub(crate) const unsafe fn uninit<T>() -> T
+    {
+        MaybeUninit::assume_init(MaybeUninit::uninit())
+    }
+
+    #[inline]
+    pub(crate) const unsafe fn split_transmute<A, B, C>(a: A) -> (B, C)
+    where
+        A: NotTuple,
+    {
+        transmute_unchecked_size::<_, Pair<_, _>>(a).unpack()
+    }
+
+    #[inline]
+    pub(crate) const unsafe fn merge_transmute<A, B, C>(a: A, b: B) -> C
+    where
+        C: NotTuple
+    {
+        transmute_unchecked_size(Pair::new(a, b))
+    }
+
+    #[inline]
+    pub(crate) const unsafe fn overlap_swap_transmute<A, B>(a: A, b: B) -> (B, A)
+    {
+        split_transmute(Pair::new(a, b))
+    }
     
-    //#[deprecated]
     #[inline]
     pub(crate) const unsafe fn transmute_unchecked_size<A, B>(from: A) -> B
+    where
+        A: NotTuple,
+        B: NotTuple
     {
         /*#[cfg(test)]
         if core::mem::size_of::<A>() != core::mem::size_of::<B>() && core::mem::align_of::<A>() != core::mem::align_of::<B>()
@@ -86,39 +215,16 @@ mod private
 
         unsafe {ManuallyDrop::into_inner(Transmutation {a: ManuallyDrop::new(a)}.b)}*/
     }
-
-    #[inline]
-    pub(crate) const fn split_array_mandrop<T, const N: usize, const M: usize>(a: [T; N]) -> (ManuallyDrop<[T; M]>, ManuallyDrop<[T; N - M]>)
-    {
-        unsafe {transmute_unchecked_size(a)}
-    }
-
-    #[inline]
-    pub(crate) const fn rsplit_array_mandrop<T, const N: usize, const M: usize>(a: [T; N]) -> (ManuallyDrop<[T; N - M]>, ManuallyDrop<[T; M]>)
-    {
-        unsafe {transmute_unchecked_size(a)}
-    }
-
-    #[inline]
-    pub(crate) const unsafe fn take_and_leave_uninit<T>(from: &mut T) -> T
-    {
-        core::mem::replace(from, unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())})
-    }
 }
 
-pub trait ArrayPrereq = Sized
-+ IntoIterator
-+ AsRef<[<Self as IntoIterator>::Item]>
-+ AsMut<[<Self as IntoIterator>::Item]>
-+ Borrow<[<Self as IntoIterator>::Item]>
-+ BorrowMut<[<Self as IntoIterator>::Item]>
-+ ~const Index<usize, Output = <[<Self as IntoIterator>::Item] as Index<usize>>::Output>
-+ ~const Index<Range<usize>, Output = <[<Self as IntoIterator>::Item] as Index<Range<usize>>>::Output>
-+ ~const Index<RangeInclusive<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeInclusive<usize>>>::Output>
-+ ~const Index<RangeFrom<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeFrom<usize>>>::Output>
-+ ~const Index<RangeTo<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeTo<usize>>>::Output>
-+ ~const Index<RangeToInclusive<usize>, Output = <[<Self as IntoIterator>::Item] as Index<RangeToInclusive<usize>>>::Output>
-+ ~const Index<RangeFull, Output = <[<Self as IntoIterator>::Item] as Index<RangeFull>>::Output>
+pub trait SlicePrereq<T> = ?Sized
++ ~const Index<usize, Output = <[T] as Index<usize>>::Output>
++ ~const Index<Range<usize>, Output = <[T] as Index<Range<usize>>>::Output>
++ ~const Index<RangeInclusive<usize>, Output = <[T] as Index<RangeInclusive<usize>>>::Output>
++ ~const Index<RangeFrom<usize>, Output = <[T] as Index<RangeFrom<usize>>>::Output>
++ ~const Index<RangeTo<usize>, Output = <[T] as Index<RangeTo<usize>>>::Output>
++ ~const Index<RangeToInclusive<usize>, Output = <[T] as Index<RangeToInclusive<usize>>>::Output>
++ ~const Index<RangeFull, Output = <[T] as Index<RangeFull>>::Output>
 + ~const IndexMut<usize>
 + ~const IndexMut<Range<usize>>
 + ~const IndexMut<RangeInclusive<usize>>
@@ -126,6 +232,14 @@ pub trait ArrayPrereq = Sized
 + ~const IndexMut<RangeTo<usize>>
 + ~const IndexMut<RangeToInclusive<usize>>
 + ~const IndexMut<RangeFull>;
+
+pub trait ArrayPrereq = Sized
++ IntoIterator
++ AsRef<[<Self as IntoIterator>::Item]>
++ AsMut<[<Self as IntoIterator>::Item]>
++ Borrow<[<Self as IntoIterator>::Item]>
++ BorrowMut<[<Self as IntoIterator>::Item]>
++ SlicePrereq<<Self as IntoIterator>::Item>;
 
 #[cfg(test)]
 mod tests {

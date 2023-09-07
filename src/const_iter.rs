@@ -31,6 +31,21 @@ impl<'a, T, const N: usize> ConstIter<'a, T, N>
             None
         }
     }
+    
+    #[inline]
+    pub const fn next_enumerated(&mut self) -> Option<(usize, &T)>
+    {
+        if self.i < N
+        {
+            let out = (self.i, &self.data[self.i]);
+            self.i += 1;
+            Some(out)
+        }
+        else
+        {
+            None
+        }
+    }
 }
 impl<'a, T, const N: usize> const From<&'a [T; N]> for ConstIter<'a, T, N>
 {

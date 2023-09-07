@@ -1,10 +1,16 @@
-use core::mem::ManuallyDrop;
+use core::{mem::ManuallyDrop, ops::{Mul, AddAssign}};
 
 use super::*;
 
 #[const_trait]
-pub trait Array2dOps<T, const W: usize, const H: usize>: ArrayOps<[T; W], H>
+pub trait Array2dOps<T, const M: usize, const N: usize>: ArrayOps<[T; N], M>
 {
+    type Array2d<I, const H: usize, const W: usize>: Array2dOps<I, H, W>;
+    
+    type Resized2d<const H: usize, const W: usize>: Array2dOps<T, H, W> = Self::Array2d<T, H, W>;
+    
+    type Transposed: Array2dOps<T, N, M> = Self::Resized2d<N, M>;
+
     /// Transposes a two-dimensional array (as if it were a matrix)
     /// 
     /// # Example
@@ -26,32 +32,31 @@ pub trait Array2dOps<T, const W: usize, const H: usize>: ArrayOps<[T; W], H>
     ///     [5, 10, 15]
     /// ]);
     /// ```
-    fn transpose(self) -> [[T; H]; W];
+    fn transpose(self) -> Self::Transposed;
     
-    fn array_chunks_exact_from(array: Self::Array<T, {H*W}>) -> Self;
-    
-    fn array_chunks_exact_from_ref(array: &Self::Array<T, {H*W}>) -> &Self;
-    
-    fn array_chunks_exact_from_mut(array: &mut Self::Array<T, {H*W}>) -> &mut Self;
+    fn mul_matrix<Rhs, const P: usize>(&self, rhs: &Self::Array2d<Rhs, N, P>) -> Self::Array2d<<T as Mul<Rhs>>::Output, M, P>
+    where
+        T: ~const Mul<Rhs, Output: ~const AddAssign + ~const Default> + Copy,
+        Rhs: Copy;
 }
 
-impl<T, const W: usize, const H: usize> const Array2dOps<T, W, H> for [[T; W]; H]
+impl<T, const M: usize, const N: usize> const Array2dOps<T, M, N> for [[T; N]; M]
 {
+    type Array2d<I, const H: usize, const W: usize> = [[I; W]; H];
+    
     #[inline]
-    fn transpose(self) -> [[T; H]; W]
+    fn transpose(self) -> Self::Transposed
     {
-        let this = ManuallyDrop::new(self);
-
         // Alternative 1: (dirtier)
-        let mut this_t: [[T; H]; W] = unsafe {MaybeUninit::assume_init(MaybeUninit::uninit())};
+        let mut this_t: [[T; M]; N] = unsafe {private::uninit()};
         let mut i = 0;
-        while i != H
+        while i != M
         {
             let mut j = 0;
-            while j != W
+            while j != N
             {
                 unsafe {core::ptr::copy_nonoverlapping(
-                    this[i][j].borrow() as *const T,
+                    self[i][j].borrow() as *const T,
                     &mut this_t[j][i] as *mut T,
                     1
                 )};
@@ -59,6 +64,9 @@ impl<T, const W: usize, const H: usize> const Array2dOps<T, W, H> for [[T; W]; H
             }
             i += 1;
         }
+
+        core::mem::forget(self);
+
         this_t
 
         // Alternative 2: (cleaner)
@@ -67,21 +75,31 @@ impl<T, const W: usize, const H: usize> const Array2dOps<T, W, H> for [[T; W]; H
         }))*/
     }
     
-    #[inline]
-    fn array_chunks_exact_from(array: Self::Array<T, {H*W}>) -> Self
+    fn mul_matrix<Rhs, const P: usize>(&self, rhs: &Self::Array2d<Rhs, N, P>) -> Self::Array2d<<T as Mul<Rhs>>::Output, M, P>
+    where
+        T: ~const Mul<Rhs, Output: ~const AddAssign + ~const Default> + Copy,
+        Rhs: Copy
     {
-        unsafe {private::transmute_unchecked_size(array)}
-    }
-    
-    #[inline]
-    fn array_chunks_exact_from_ref(array: &Self::Array<T, {H*W}>) -> &Self
-    {
-        unsafe {core::mem::transmute(array as *const _)}
-    }
-    
-    #[inline]
-    fn array_chunks_exact_from_mut(array: &mut Self::Array<T, {H*W}>) -> &mut Self
-    {
-        unsafe {core::mem::transmute(array as *mut _)}
+        let mut prod: [[<T as Mul<Rhs>>::Output; P]; M] = unsafe {private::uninit()};
+        let mut m = 0;
+        while m != M
+        {
+            let mut p = 0;
+            while p != P
+            {
+                let mut n = 0;
+                while n != N
+                {
+                    prod[m][p] += self[m][n]*rhs[n][p];
+                    n += 1;
+                }
+                p += 1;
+            }
+            m += 1;
+        }
+
+        core::mem::forget((self, rhs));
+
+        prod
     }
 }

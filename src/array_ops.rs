@@ -1,4 +1,4 @@
-use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, MulAssign, Add}, mem::ManuallyDrop};
+use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, Add}, mem::ManuallyDrop};
 
 use core::ops::Deref;
 
@@ -259,6 +259,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const Default + ~const AddAssign;
         
+    fn sum_from(self, from: T) -> T
+    where
+        T: ~const AddAssign;
+        
     fn all(&self) -> bool
     where
         T: ~const Into<bool> + Copy;
@@ -303,6 +307,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn mul_dot<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> <T as Mul<Rhs>>::Output
     where
         T: ~const Mul<Rhs, Output: ~const AddAssign + ~const Default>;
+
+    fn mul_dot_bias<Rhs>(self, rhs: Self::MappedTo<Rhs>, bias: <T as Mul<Rhs>>::Output) -> <T as Mul<Rhs>>::Output
+    where
+        T: ~const Mul<Rhs, Output: ~const AddAssign>;
 
     fn mul_outer<Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>) -> Self::MappedTo<Self::Array<<T as Mul<Rhs>>::Output, M>>
     where
@@ -1419,7 +1427,27 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
             next.deref().is_some()
         }
         {
-            let x = ManuallyDrop::into_inner(next).unwrap();
+            let x = unsafe {ManuallyDrop::into_inner(next).unwrap_unchecked()};
+            reduction += x;
+        }
+        reduction
+    }
+
+    #[inline]
+    fn sum_from(self, from: T) -> T
+    where
+        T: ~const AddAssign
+    {
+        let mut iter = ManuallyDrop::new(self.into_const_iter());
+
+        let mut next;
+        let mut reduction = from;
+        while {
+            next = ManuallyDrop::new(iter.deref_mut().next());
+            next.deref().is_some()
+        }
+        {
+            let x = unsafe {ManuallyDrop::into_inner(next).unwrap_unchecked()};
             reduction += x;
         }
         reduction
@@ -1545,6 +1573,13 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         T: ~const Mul<Rhs, Output: ~const AddAssign + ~const Default>
     {
         self.mul_each(rhs).sum()
+    }
+    
+    fn mul_dot_bias<Rhs>(self, rhs: Self::MappedTo<Rhs>, bias: <T as Mul<Rhs>>::Output) -> <T as Mul<Rhs>>::Output
+    where
+        T: ~const Mul<Rhs, Output: ~const AddAssign>
+    {
+        self.mul_each(rhs).sum_from(bias)
     }
 
     fn mul_outer<Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>) -> Self::MappedTo<Self::Array<<T as Mul<Rhs>>::Output, M>>

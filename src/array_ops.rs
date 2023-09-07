@@ -262,6 +262,14 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn sum_from(self, from: T) -> T
     where
         T: ~const AddAssign;
+
+    fn max(self) -> Option<T>
+    where
+        T: ~const Ord;
+        
+    fn min(self) -> Option<T>
+    where
+        T: ~const Ord;
         
     fn all(&self) -> bool
     where
@@ -1451,6 +1459,22 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
             reduction += x;
         }
         reduction
+    }
+    
+    #[inline]
+    fn max(self) -> Option<T>
+    where
+        T: ~const Ord
+    {
+        self.reduce(T::max)
+    }
+        
+    #[inline]
+    fn min(self) -> Option<T>
+    where
+        T: ~const Ord
+    {
+        self.reduce(T::min)
     }
 
     #[inline]

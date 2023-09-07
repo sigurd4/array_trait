@@ -39,12 +39,22 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         [(); N.saturating_sub(1)]:,
         T: Sub<T>;
 
-    type Split<const M: usize>: ~const ArrayOps<T, M> = Self::Array<T, M>
+    type Split<const M: usize>: ~const ArrayOps<T, M> = Self::Resized<M>
     where
         [(); N - M]:;
-    type RSplit<const M: usize>: ~const ArrayOps<T, {N - M}> = Self::Array<T, {N - M}>
+    type RSplit<const M: usize>: ~const ArrayOps<T, {N - M}> = Self::Resized<{N - M}>
     where
         [(); N - M]:;
+
+    type ResizedDiv<const M: usize>: ~const ArrayOps<T, {N / M}> = Self::Resized<{N / M}>
+    where
+        [(); N / M]:;
+    type ResizedRem<const M: usize>: ~const ArrayOps<T, {N % M}> = Self::Resized<{N % M}>
+    where
+        [(); N % M]:;
+    type Chunks<const M: usize>: ~const ArrayOps<Self::Array<T, M>, {N / M}> = [Self::Array<T, M>; N / M]
+    where
+        [(); N / M]:;
 
     fn split_len<const WRAPPING: bool>(n: usize) -> (usize, usize);
     fn rsplit_len<const WRAPPING: bool>(n: usize) -> (usize, usize);
@@ -408,16 +418,19 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(pong, ["pong 1", "pong 2", "pong 3"]);
     /// assert_eq!(rest, ["uhh..."]);
     /// ```
-    fn array_spread<const M: usize>(self) -> ([Self::Array<T, {N / M}>; M], Self::Array<T, {N % M}>)
+    fn array_spread<const M: usize>(self) -> ([Self::ResizedDiv<M>; M], Self::ResizedRem<M>)
     where
-        [(); M - 1]:;
+        [(); M - 1]:,
+        [(); N / M]:,
+        [(); N % M]:;
 
     /// Distributes items of an array-slice equally across a given width, then provides the rest as a separate array-slice.
     /// 
     /// The spread-out slices are given in padded arrays. Each padded item can be borrowed into a reference to the array's item.
-    fn array_spread_ref<const M: usize>(&self) -> ([&Self::PaddedArray<T, M, {N / M}>; M], &Self::Array<T, {N % M}>)
+    fn array_spread_ref<const M: usize>(&self) -> ([&Self::PaddedArray<T, M, {N / M}>; M], &Self::ResizedRem<M>)
     where
-        [(); M - 1]:;
+        [(); M - 1]:,
+        [(); N % M]:;
     
     /// Distributes items of a mutable array-slice equally across a given width, then provides the rest as a separate mutable array-slice.
     /// 
@@ -457,14 +470,17 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(array, ["1", "2", "fizz", "4", "buzz", "fizz", "7", "8", "fizz", "buzz", "11", "fizz", "13", "14", "fizzbuzz", "16", "17", "fizz", "19", "buzz"]);
     /// 
     /// ```
-    fn array_spread_mut<const M: usize>(&mut self) -> ([&mut Self::PaddedArray<T, M, {N / M}>; M], &mut Self::Array<T, {N % M}>)
-    where
-        [(); M - 1]:;
-    
-    /// Distributes items of an array equally across a given width, then provides the leftmost rest as a separate array.
-    fn array_rspread<const M: usize>(self) -> (Self::Array<T, {N % M}>, [Self::Array<T, {N / M}>; M])
+    fn array_spread_mut<const M: usize>(&mut self) -> ([&mut Self::PaddedArray<T, M, {N / M}>; M], &mut Self::ResizedRem<M>)
     where
         [(); M - 1]:,
+        [(); N % M]:;
+    
+    /// Distributes items of an array equally across a given width, then provides the leftmost rest as a separate array.
+    fn array_rspread<const M: usize>(self) -> (Self::ResizedRem<M>, [Self::ResizedDiv<M>; M])
+    where
+        [(); M - 1]:,
+        [(); N / M]:,
+        [(); N % M]:,
         T: Copy;
 
     /// Distributes items of an array-slice equally across a given width, then provides the leftmost rest as a separate array-slice.
@@ -488,9 +504,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(odd.each_ref().map(|padding| **padding), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     /// assert_eq!(even.each_ref().map(|padding| **padding), [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
     /// ```
-    fn array_rspread_ref<const M: usize>(&self) -> (&Self::Array<T, {N % M}>, [&Self::PaddedArray<T, M, {N / M}>; M])
+    fn array_rspread_ref<const M: usize>(&self) -> (&Self::ResizedRem<M>, [&Self::PaddedArray<T, M, {N / M}>; M])
     where
-        [(); M - 1]:;
+        [(); M - 1]:,
+        [(); N % M]:;
     /// Distributes items of a mutable array-slice equally across a given width, then provides the leftmost rest as a separate mutable array-slice.
     /// 
     /// The spread-out slices are given in padded arrays. Each padded item can be borrowed into a reference to the array's item.
@@ -527,9 +544,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(array, ["the", "beat", "goes", "boots", "n", "cats", "and", "boots", "n", "cats", "and"]);
     /// ```
-    fn array_rspread_mut<const M: usize>(&mut self) -> (&mut Self::Array<T, {N % M}>, [&mut Self::PaddedArray<T, M, {N / M}>; M])
+    fn array_rspread_mut<const M: usize>(&mut self) -> (&mut Self::ResizedRem<M>, [&mut Self::PaddedArray<T, M, {N / M}>; M])
     where
-        [(); M - 1]:;
+        [(); M - 1]:,
+        [(); N % M]:;
     
     /// Distributes items of an array equally across a given width, with no rest.
     /// 
@@ -550,10 +568,11 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(lower_case, *b"abcdefghijklmnopqrstuvwxyz");
     /// assert_eq!(upper_case, *b"ABCDEFGHIJKLMNOPQRSTUVWXYZ");
     /// ```
-    fn array_spread_exact<const M: usize>(self) -> [Self::Array<T, {N / M}>; M]
+    fn array_spread_exact<const M: usize>(self) -> [Self::ResizedDiv<M>; M]
     where
         [(); M - 1]:,
-        [(); 0 - N % M]:;
+        [(); 0 - N % M]:,
+        [(); N / M]:;
     
     /// Distributes items of an array-slice equally across a given width, with no rest.
     /// 
@@ -635,7 +654,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(stone_fruits, ["cherry", "peach", "strawberry"]);
     /// assert_eq!(not_for_human_consumption, ["nine volt batteries"]);
     /// ```
-    fn array_chunks<const M: usize>(self) -> ([Self::Array<T, M>; N / M], Self::Array<T, {N % M}>);
+    fn array_chunks<const M: usize>(self) -> (Self::Chunks<M>, Self::ResizedRem<M>)
+    where
+        [(); N % M]:,
+        [(); N / M]:;
     /// Divides an array-slice into chunks, then yielding the rest in a separate array-slice.
     /// 
     /// # Example
@@ -655,7 +677,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(jfets, &["2SK30A", "2N5458", "J108"]);
     /// assert_eq!(mosfets, &["2N7000", "BS170"]);
     /// ```
-    fn array_chunks_ref<const M: usize>(&self) -> (&[Self::Array<T, M>; N / M], &Self::Array<T, {N % M}>);
+    fn array_chunks_ref<const M: usize>(&self) -> (&Self::Chunks<M>, &Self::ResizedRem<M>)
+    where
+        [(); N % M]:,
+        [(); N / M]:;
     /// Divides a mutable array-slice into chunks, then yielding the rest in a separate mutable array-slice.
     /// 
     /// # Example
@@ -680,14 +705,26 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(array, [0, 1, 2, 3, 4, 5, 6]);
     /// ```
-    fn array_chunks_mut<const M: usize>(&mut self) -> (&mut [Self::Array<T, M>; N / M], &mut Self::Array<T, {N % M}>);
+    fn array_chunks_mut<const M: usize>(&mut self) -> (&mut Self::Chunks<M>, &mut Self::ResizedRem<M>)
+    where
+        [(); N % M]:,
+        [(); N / M]:;
     
     /// Divides a mutable array-slice into chunks, then yielding the leftmost rest in a separate mutable array-slice.
-    fn array_rchunks<const M: usize>(self) -> (Self::Array<T, {N % M}>, [Self::Array<T, M>; N / M]);
+    fn array_rchunks<const M: usize>(self) -> (Self::ResizedRem<M>, Self::Chunks<M>)
+    where
+        [(); N % M]:,
+        [(); N / M]:;
     /// Divides an array-slice into chunks, then yielding the leftmost rest in a separate array-slice.
-    fn array_rchunks_ref<const M: usize>(&self) -> (&Self::Array<T, {N % M}>, &[Self::Array<T, M>; N / M]);
+    fn array_rchunks_ref<const M: usize>(&self) -> (&Self::ResizedRem<M>, &Self::Chunks<M>)
+    where
+        [(); N % M]:,
+        [(); N / M]:;
     /// Divides a mutable array-slice into chunks, then yielding the leftmost rest in a separate array-slice.
-    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut Self::Array<T, {N % M}>, &mut [Self::Array<T, M>; N / M]);
+    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut Self::ResizedRem<M>, &mut Self::Chunks<M>)
+    where
+        [(); N % M]:,
+        [(); N / M]:;
     
     /// Divides an array into chunks, with no rest.
     /// 
@@ -708,7 +745,7 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(lower_half, [0.0, 0.1, 0.2, 0.3, 0.4]);
     /// assert_eq!(upper_half, [0.5, 0.6, 0.7, 0.8, 0.9]);
     /// ```
-    fn array_chunks_exact<const M: usize>(self) -> [Self::Array<T, M>; N / M]
+    fn array_chunks_exact<const M: usize>(self) -> Self::Chunks<M>
     where
         [(); 0 - N % M]:,
         [(); N / M]:;
@@ -731,60 +768,48 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(lower_half, &[0.0, 0.1, 0.2, 0.3, 0.4]);
     /// assert_eq!(upper_half, &[0.5, 0.6, 0.7, 0.8, 0.9]);
     /// ```
-    fn array_chunks_exact_ref<const M: usize>(&self) -> &[Self::Array<T, M>; N / M]
+    fn array_chunks_exact_ref<const M: usize>(&self) -> &Self::Chunks<M>
     where
         [(); 0 - N % M]:,
         [(); N / M]:;
     /// Divides a mutable array-slice into chunks, with no rest.
     /// 
     /// The chunk length must be a factor of the array length, otherwise it will not compile.
-    fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut [Self::Array<T, M>; N / M]
+    fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut Self::Chunks<M>
     where
         [(); 0 - N % M]:,
         [(); N / M]:;
 
-    fn split_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, M>, Self::Array<T, N>);
-    
-    fn split_array_from_ref<const M: usize>(array: &Self::Array<T, {N + M}>) -> (&Self::Array<T, M>, &Self::Array<T, N>);
-    
-    fn split_array_from_mut<const M: usize>(array: &mut Self::Array<T, {N + M}>) -> (&mut Self::Array<T, M>, &mut Self::Array<T, N>);
-    
-    fn rsplit_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, N>, Self::Array<T, M>);
-    
-    fn rsplit_array_from_ref<const M: usize>(array: &Self::Array<T, {N + M}>) -> (&Self::Array<T, N>, &Self::Array<T, M>);
-    
-    fn rsplit_array_from_mut<const M: usize>(array: &mut Self::Array<T, {N + M}>) -> (&mut Self::Array<T, N>, &mut Self::Array<T, M>);
-
     /// Splits an array at a chosen index.
-    fn split_array<const M: usize>(self) -> (Self::Array<T, M>, Self::Array<T, {N - M}>)
+    fn split_array<const M: usize>(self) -> (Self::Resized<M>, Self::Resized<{N - M}>)
     where
         [(); N - M]:;
     /// Splits an array at a chosen index as array-slices.
-    fn split_array_ref2<const M: usize>(&self) -> (&Self::Array<T, M>, &Self::Array<T, {N - M}>)
+    fn split_array_ref2<const M: usize>(&self) -> (&Self::Resized<M>, &Self::Resized<{N - M}>)
     where
         [(); N - M]:;
     /// Splits an array at a chosen index as mutable array-slices.
-    fn split_array_mut2<const M: usize>(&mut self) -> (&mut Self::Array<T, M>, &mut Self::Array<T, {N - M}>)
+    fn split_array_mut2<const M: usize>(&mut self) -> (&mut Self::Resized<M>, &mut Self::Resized<{N - M}>)
     where
         [(); N - M]:;
     
     /// Splits an array at a chosen index, where the index goes from right to left.
-    fn rsplit_array<const M: usize>(self) -> (Self::Array<T, {N - M}>, Self::Array<T, M>)
+    fn rsplit_array<const M: usize>(self) -> (Self::Resized<{N - M}>, Self::Resized<M>)
     where
         [(); N - M]:;
     /// Splits an array at a chosen index as array-slices, where the index goes from right to left.
-    fn rsplit_array_ref2<const M: usize>(&self) -> (&Self::Array<T, {N - M}>, &Self::Array<T, M>)
+    fn rsplit_array_ref2<const M: usize>(&self) -> (&Self::Resized<{N - M}>, &Self::Resized<M>)
     where
         [(); N - M]:;
     /// Splits an array at a chosen index as mutable array-slices, where the index goes from right to left.
-    fn rsplit_array_mut2<const M: usize>(&mut self) -> (&mut Self::Array<T, {N - M}>, &mut Self::Array<T, M>)
+    fn rsplit_array_mut2<const M: usize>(&mut self) -> (&mut Self::Resized<{N - M}>, &mut Self::Resized<M>)
     where
         [(); N - M]:;
 
-    fn each_ref2<B>(&self) -> Self::Array<&B, N>
+    fn each_ref2<B>(&self) -> Self::MappedTo<&B>
     where
         T: ~const Borrow<B>;
-    fn each_mut2<B>(&mut self) -> Self::Array<&mut B, N>
+    fn each_mut2<B>(&mut self) -> Self::MappedTo<&mut B>
     where
         T: ~const BorrowMut<B>;
 }
@@ -878,7 +903,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn truncate<const M: usize>(self) -> Self::Array<T, M>
+    fn truncate<const M: usize>(self) -> [T; M]
     where
         T: ~const Destruct,
         [(); N - M]:
@@ -886,7 +911,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         self.split_array().0
     }
     #[inline]
-    fn rtruncate<const M: usize>(self) -> Self::Array<T, M>
+    fn rtruncate<const M: usize>(self) -> [T; M]
     where
         T: ~const Destruct,
         [(); N - M]:
@@ -895,7 +920,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn resize<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
+    fn resize<const M: usize, F>(self, mut fill: F) -> [T; M]
     where
         F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
@@ -916,7 +941,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         array
     }
     #[inline]
-    fn rresize<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
+    fn rresize<const M: usize, F>(self, mut fill: F) -> [T; M]
     where
         F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
@@ -1152,19 +1177,19 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn from_item(item: T) -> Self::Array<T, 1>
+    fn from_item(item: T) -> [T; 1]
     {
         [item]
     }
     
     #[inline]
-    fn from_item_ref(item: &T) -> &Self::Array<T, 1>
+    fn from_item_ref(item: &T) -> &[T; 1]
     {
         unsafe {core::mem::transmute(item)}
     }
 
     #[inline]
-    fn from_item_mut(item: &mut T) -> &mut Self::Array<T, 1>
+    fn from_item_mut(item: &mut T) -> &mut [T; 1]
     {
         unsafe {core::mem::transmute(item)}
     }
@@ -1196,7 +1221,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn extend<const M: usize, F>(self, mut fill: F) -> Self::Array<T, M>
+    fn extend<const M: usize, F>(self, mut fill: F) -> [T; M]
     where
         F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:
@@ -1205,7 +1230,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {private::merge_transmute(self, filled)}
     }
     #[inline]
-    fn rextend<const M: usize, F>(self, fill: F) -> Self::Array<T, M>
+    fn rextend<const M: usize, F>(self, fill: F) -> [T; M]
     where
         F: ~const FnMut(usize) -> T + ~const Destruct,
         [(); M - N]:
@@ -1215,7 +1240,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn reformulate_length<const M: usize>(self) -> Self::Array<T, M>
+    fn reformulate_length<const M: usize>(self) -> [T; M]
     where
         [(); M - N]:,
         [(); N - M]:
@@ -1224,7 +1249,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn reformulate_length_ref<const M: usize>(&self) -> &Self::Array<T, M>
+    fn reformulate_length_ref<const M: usize>(&self) -> &[T; M]
     where
         [(); M - N]:,
         [(); N - M]:
@@ -1233,7 +1258,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
         
     #[inline]
-    fn reformulate_length_mut<const M: usize>(&mut self) -> &mut Self::Array<T, M>
+    fn reformulate_length_mut<const M: usize>(&mut self) -> &mut [T; M]
     where
         [(); M - N]:,
         [(); N - M]:
@@ -1242,7 +1267,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn try_reformulate_length<const M: usize>(self) -> Result<Self::Array<T, M>, Self>
+    fn try_reformulate_length<const M: usize>(self) -> Result<[T; M], Self>
     {
         if N == M
         {
@@ -1255,7 +1280,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn try_reformulate_length_ref<const M: usize>(&self) -> Option<&Self::Array<T, M>>
+    fn try_reformulate_length_ref<const M: usize>(&self) -> Option<&[T; M]>
     {
         if N == M
         {
@@ -1268,7 +1293,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
         
     #[inline]
-    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Option<&mut Self::Array<T, M>>
+    fn try_reformulate_length_mut<const M: usize>(&mut self) -> Option<&mut [T; M]>
     {
         if N == M
         {
@@ -1303,7 +1328,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn map2<M>(self, mut map: M) -> Self::Mapped<M>
+    fn map2<M>(self, mut map: M) -> [M::Output; N]
     where
         M: ~const FnMut<(T,)> + ~const Destruct
     {
@@ -1312,7 +1337,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn zip2<Z>(self, other: Self::Array<Z, N>) -> Self::Zipped<Z>
+    fn zip2<Z>(self, other: Self::Array<Z, N>) -> [(T, Z); N]
     {
         let mut iter_self = ManuallyDrop::new(self.into_const_iter());
         let mut iter_other = ManuallyDrop::new(other.into_const_iter());
@@ -1320,14 +1345,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn enumerate(self) -> Self::Enumerated
+    fn enumerate(self) -> [(usize, T); N]
     {
         let mut iter_self = ManuallyDrop::new(self.into_const_iter());
         ArrayOps::fill(const |i| (i, iter_self.deref_mut().next().unwrap()))
     }
 
     #[inline]
-    fn differentiate(self) -> Self::Differentiated
+    fn differentiate(self) -> [<T as Sub<T>>::Output; N.saturating_sub(1)]
     where
         [(); N.saturating_sub(1)]:,
         T: ~const Sub<T> + Copy + ~const Destruct
@@ -1373,7 +1398,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn integrate_from<const M: usize>(self, x0: T) -> Self::Resized<M>
+    fn integrate_from<const M: usize>(self, x0: T) -> [T; M]
     where
         T: ~const AddAssign<T> + Copy + ~const Destruct
     {
@@ -1538,28 +1563,28 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         true
     }
     
-    fn add_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Add<Rhs>>::Output>
+    fn add_all<Rhs>(self, rhs: Rhs) -> [<T as Add<Rhs>>::Output; N]
     where
         T: ~const Add<Rhs>,
         Rhs: Copy
     {
         self.map2(const |x| x + rhs)
     }
-    fn sub_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Sub<Rhs>>::Output>
+    fn sub_all<Rhs>(self, rhs: Rhs) -> [<T as Sub<Rhs>>::Output; N]
     where
         T: ~const Sub<Rhs>,
         Rhs: Copy
     {
         self.map2(const |x| x - rhs)
     }
-    fn mul_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Mul<Rhs>>::Output>
+    fn mul_all<Rhs>(self, rhs: Rhs) ->  [<T as Mul<Rhs>>::Output; N]
     where
         T: ~const Mul<Rhs>,
         Rhs: Copy
     {
         self.map2(const |x| x*rhs)
     }
-    fn div_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Div<Rhs>>::Output>
+    fn div_all<Rhs>(self, rhs: Rhs) -> [<T as Div<Rhs>>::Output; N]
     where
         T: ~const Div<Rhs>,
         Rhs: Copy
@@ -1567,25 +1592,25 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         self.map2(const |x| x/rhs)
     }
     
-    fn add_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Add<Rhs>>::Output>
+    fn add_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Add<Rhs>>::Output; N]
     where
         T: ~const Add<Rhs>
     {
         self.zip2(rhs).map2(const |(x, rhs)| x + rhs)
     }
-    fn sub_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Sub<Rhs>>::Output>
+    fn sub_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Sub<Rhs>>::Output; N]
     where
         T: ~const Sub<Rhs>
     {
         self.zip2(rhs).map2(const |(x, rhs)| x - rhs)
     }
-    fn mul_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Mul<Rhs>>::Output>
+    fn mul_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Mul<Rhs>>::Output; N]
     where
         T: ~const Mul<Rhs>
     {
         self.zip2(rhs).map2(const |(x, rhs)| x*rhs)
     }
-    fn div_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Div<Rhs>>::Output>
+    fn div_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Div<Rhs>>::Output; N]
     where
         T: ~const Div<Rhs>
     {
@@ -1606,7 +1631,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         self.mul_each(rhs).sum_from(bias)
     }
 
-    fn mul_outer<Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>) -> Self::MappedTo<Self::Array<<T as Mul<Rhs>>::Output, M>>
+    fn mul_outer<Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>) -> [[<T as Mul<Rhs>>::Output; M]; N]
     where
         T: ~const Mul<Rhs> + Copy,
         Rhs: Copy
@@ -1615,21 +1640,23 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> Self::Array<T, {N + M}>
+    fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> [T; N + M]
     {
         unsafe {private::merge_transmute(self, rhs)}
     }
     
     #[inline]
-    fn rchain<const M: usize>(self, rhs: Self::Array<T, M>) -> Self::Array<T, {N + M}>
+    fn rchain<const M: usize>(self, rhs: Self::Array<T, M>) -> [T; N + M]
     {
         unsafe {private::merge_transmute(rhs, self)}
     }
     
     #[inline]
-    fn array_spread<const M: usize>(self) -> ([Self::Array<T, {N / M}>; M], Self::Array<T, {N % M}>)
+    fn array_spread<const M: usize>(self) -> ([[T; N / M]; M], [T; N % M])
     where
-        [(); M - 1]:
+        [(); M - 1]:,
+        [(); N % M]:,
+        [(); N / M]:
     {
         let split = self.array_chunks();
 
@@ -1640,9 +1667,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         (spread_t.transpose(), rest)
     }
     #[inline]
-    fn array_spread_ref<const M: usize>(&self) -> ([&Self::PaddedArray<T, M, {N / M}>; M], &Self::Array<T, {N % M}>)
+    fn array_spread_ref<const M: usize>(&self) -> ([&Self::PaddedArray<T, M, {N / M}>; M], &[T; N % M])
     where
-        [(); M - 1]:
+        [(); M - 1]:,
+        [(); N % M]:
     {
         let (mut left, right) = self.rsplit_ptr::<false>(N % M);
 
@@ -1656,9 +1684,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         )}
     }
     #[inline]
-    fn array_spread_mut<const M: usize>(&mut self) -> ([&mut Self::PaddedArray<T, M, {N / M}>; M], &mut Self::Array<T, {N % M}>)
+    fn array_spread_mut<const M: usize>(&mut self) -> ([&mut Self::PaddedArray<T, M, {N / M}>; M], &mut [T; N % M])
     where
-        [(); M - 1]:
+        [(); M - 1]:,
+        [(); N % M]:
     {
         let (mut left, right) = self.rsplit_mut_ptr::<false>(N % M);
 
@@ -1673,9 +1702,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn array_rspread<const M: usize>(self) -> ([T; N % M], [Self::Array<T, {N / M}>; M])
+    fn array_rspread<const M: usize>(self) -> ([T; N % M], [[T; N / M]; M])
     where
-        [(); M - 1]:
+        [(); M - 1]:,
+        [(); N % M]:,
+        [(); N / M]:
     {
         let split = self.array_rchunks();
         
@@ -1688,7 +1719,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     #[inline]
     fn array_rspread_ref<const M: usize>(&self) -> (&[T; N % M], [&Self::PaddedArray<T, M, {N / M}>; M])
     where
-        [(); M - 1]:
+        [(); M - 1]:,
+        [(); N % M]:
     {
         let (left, mut right) = self.split_ptr::<false>(N % M);
 
@@ -1704,7 +1736,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     #[inline]
     fn array_rspread_mut<const M: usize>(&mut self) -> (&mut [T; N % M], [&mut Self::PaddedArray<T, M, {N / M}>; M])
     where
-        [(); M - 1]:
+        [(); M - 1]:,
+        [(); N % M]:
     {
         let (left, mut right) = self.split_mut_ptr::<false>(N % M);
 
@@ -1718,10 +1751,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         )}
     }
     #[inline]
-    fn array_spread_exact<const M: usize>(self) -> [Self::Array<T, {N / M}>; M]
+    fn array_spread_exact<const M: usize>(self) -> [[T; N / M]; M]
     where
         [(); M - 1]:,
-        [(); 0 - N % M]:
+        [(); 0 - N % M]:,
+        [(); N / M]:
     {
         let spread_t: [[T; M]; N / M] = unsafe {
             private::transmute_unchecked_size(self)
@@ -1758,25 +1792,25 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn array_chunks<const M: usize>(self) -> ([Self::Array<T, M>; N / M], Self::Array<T, {N % M}>)
+    fn array_chunks<const M: usize>(self) -> ([[T; M]; N / M], [T; N % M])
     {
         unsafe {private::split_transmute(self)}
     }
     #[inline]
-    fn array_chunks_ref<const M: usize>(&self) -> (&[Self::Array<T, M>; N / M], &Self::Array<T, {N % M}>)
+    fn array_chunks_ref<const M: usize>(&self) -> (&[[T; M]; N / M], &[T; N % M])
     {
         let (left, right) = self.rsplit_ptr::<false>(N % M);
         unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
     }
     #[inline]
-    fn array_chunks_mut<const M: usize>(&mut self) -> (&mut [Self::Array<T, M>; N / M], &mut Self::Array<T, {N % M}>)
+    fn array_chunks_mut<const M: usize>(&mut self) -> (&mut [[T; M]; N / M], &mut [T; N % M])
     {
         let (left, right) = self.rsplit_mut_ptr::<false>(N % M);
         unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
     }
 
     #[inline]
-    fn array_rchunks<const M: usize>(self) -> (Self::Array<T, {N % M}>, [Self::Array<T, M>; N / M])
+    fn array_rchunks<const M: usize>(self) -> ([T; N % M], [[T; M]; N / M])
     {
         unsafe {private::split_transmute(self)}
     }
@@ -1787,14 +1821,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
     }
     #[inline]
-    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut Self::Array<T, {N % M}>, &mut [Self::Array<T, M>; N / M])
+    fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut [T; N % M], &mut [[T; M]; N / M])
     {
         let (left, right) = self.split_mut_ptr::<false>(N % M);
         unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
     }
     
     #[inline]
-    fn array_chunks_exact<const M: usize>(self) -> [Self::Array<T, M>; N / M]
+    fn array_chunks_exact<const M: usize>(self) -> [[T; M]; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:
@@ -1802,7 +1836,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {private::transmute_unchecked_size(self)}
     }
     #[inline]
-    fn array_chunks_exact_ref<const M: usize>(&self) -> &[Self::Array<T, M>; N / M]
+    fn array_chunks_exact_ref<const M: usize>(&self) -> &[[T; M]; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:
@@ -1810,7 +1844,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {core::mem::transmute(self as *const T)}
     }
     #[inline]
-    fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut [Self::Array<T, M>; N / M]
+    fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut [[T; M]; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:
@@ -1819,54 +1853,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn split_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, M>, Self::Array<T, N>)
-    {
-        unsafe {private::split_transmute(array)}
-    }
-    
-    #[inline]
-    fn split_array_from_ref<const M: usize>(array: &Self::Array<T, {N + M}>) -> (&Self::Array<T, M>, &Self::Array<T, N>)
-    {
-        let (ptr_left, ptr_right) = array.split_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
-    }
-    
-    #[inline]
-    fn split_array_from_mut<const M: usize>(array: &mut Self::Array<T, {N + M}>) -> (&mut Self::Array<T, M>, &mut Self::Array<T, N>)
-    {
-        let (ptr_left, ptr_right) = array.split_mut_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
-    }
-    
-    #[inline]
-    fn rsplit_array_from<const M: usize>(array: Self::Array<T, {N + M}>) -> (Self::Array<T, N>, Self::Array<T, M>)
-    {
-        unsafe {private::split_transmute(array)}
-    }
-    
-    #[inline]
-    fn rsplit_array_from_ref<const M: usize>(array: &Self::Array<T, {N + M}>) -> (&Self::Array<T, N>, &Self::Array<T, M>)
-    {
-        let (ptr_left, ptr_right) = array.rsplit_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
-    }
-    
-    #[inline]
-    fn rsplit_array_from_mut<const M: usize>(array: &mut Self::Array<T, {N + M}>) -> (&mut Self::Array<T, N>, &mut Self::Array<T, M>)
-    {
-        let (ptr_left, ptr_right) = array.rsplit_mut_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
-    }
-    
-    #[inline]
-    fn split_array<const M: usize>(self) -> (Self::Array<T, M>, Self::Array<T, {N - M}>)
+    fn split_array<const M: usize>(self) -> ([T; M], [T; N - M])
     where
         [(); N - M]:
     {
         unsafe {private::split_transmute(self)}
     }
     #[inline]
-    fn split_array_ref2<const M: usize>(&self) -> (&Self::Array<T, M>, &Self::Array<T, {N - M}>)
+    fn split_array_ref2<const M: usize>(&self) -> (&[T; M], &[T; N - M])
     where
         [(); N - M]:
     {
@@ -1874,7 +1868,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
     }
     #[inline]
-    fn split_array_mut2<const M: usize>(&mut self) -> (&mut Self::Array<T, M>, &mut Self::Array<T, {N - M}>)
+    fn split_array_mut2<const M: usize>(&mut self) -> (&mut [T; M], &mut [T; N - M])
     where
         [(); N - M]:
     {
@@ -1883,14 +1877,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     
     #[inline]
-    fn rsplit_array<const M: usize>(self) -> (Self::Array<T, {N - M}>, Self::Array<T, M>)
+    fn rsplit_array<const M: usize>(self) -> ([T; N - M], [T; M])
     where
         [(); N - M]:
     {
         unsafe {private::split_transmute(self)}
     }
     #[inline]
-    fn rsplit_array_mut2<const M: usize>(&mut self) -> (&mut Self::Array<T, {N - M}>, &mut Self::Array<T, M>)
+    fn rsplit_array_mut2<const M: usize>(&mut self) -> (&mut [T; N - M], &mut [T; M])
     where
         [(); N - M]:
     {
@@ -1898,7 +1892,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
     }
     #[inline]
-    fn rsplit_array_ref2<const M: usize>(&self) -> (&Self::Array<T, {N - M}>, &Self::Array<T, M>)
+    fn rsplit_array_ref2<const M: usize>(&self) -> (&[T; N - M], &[T; M])
     where
         [(); N - M]:
     {
@@ -1907,7 +1901,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[inline]
-    fn each_ref2<B>(&self) -> Self::Array<&B, N>
+    fn each_ref2<B>(&self) -> [&B; N]
     where
         T: ~const Borrow<B>
     {
@@ -1919,7 +1913,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         })
     }
     #[inline]
-    fn each_mut2<B>(&mut self) -> Self::Array<&mut B, N>
+    fn each_mut2<B>(&mut self) -> [&mut B; N]
     where
         T: ~const BorrowMut<B>
     {

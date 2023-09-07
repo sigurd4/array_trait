@@ -281,6 +281,22 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const Ord;
         
+    fn max2(self) -> Option<T>
+    where
+        T: ~const PartialOrd<T>;
+        
+    fn min2(self) -> Option<T>
+    where
+        T: ~const PartialOrd<T>;
+        
+    fn argmax(self) -> Option<usize>
+    where
+        T: ~const PartialOrd<T>;
+        
+    fn argmin(self) -> Option<usize>
+    where
+        T: ~const PartialOrd<T>;
+        
     fn all(&self) -> bool
     where
         T: ~const Into<bool> + Copy;
@@ -1460,6 +1476,38 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         T: ~const Ord
     {
         self.reduce(T::min)
+    }
+    
+    fn max2(self) -> Option<T>
+    where
+        T: ~const PartialOrd<T>
+    {
+        self.reduce(const |a, b| if a > b {a} else {b})
+    }
+        
+    fn min2(self) -> Option<T>
+    where
+        T: ~const PartialOrd<T>
+    {
+        self.reduce(const |a, b| if a < b {a} else {b})
+    }
+    
+    fn argmax(self) -> Option<usize>
+    where
+        T: ~const PartialOrd<T>
+    {
+        self.enumerate()
+            .reduce(const |a, b| if a.1 > b.1 {a} else {b})
+            .map(const |(i, _)| i)
+    }
+        
+    fn argmin(self) -> Option<usize>
+    where
+        T: ~const PartialOrd<T>
+    {
+        self.enumerate()
+            .reduce(const |a, b| if a.1 < b.1 {a} else {b})
+            .map(const |(i, _)| i)
     }
 
     fn all(&self) -> bool

@@ -66,39 +66,32 @@ where
         Self(array)
     }
 
-    #[inline]
     pub const fn serialize_arrays(self) -> [T; sum_len::<{PART_LENGTHS}>()]
     {
         unsafe {private::transmute_unchecked_size(self)}
     }
-    #[inline]
     pub const fn as_serialize_arrays(&self) -> &[T; sum_len::<{PART_LENGTHS}>()]
     {
         &self.0
     }
-    #[inline]
     pub const fn as_serialize_arrays_mut(&mut self) -> &mut [T; sum_len::<{PART_LENGTHS}>()]
     {
         &mut self.0
     }
     
-    #[inline]
     pub const fn as_ptr(&self) -> *const T
     {
         self.0.as_ptr()
     }
-    #[inline]
     pub const fn as_mut_ptr(&mut self) -> *mut T
     {
         self.0.as_mut_ptr()
     }
 
-    #[inline]
     pub const fn part_offsets() -> [usize; PART_LENGTHS.len()]
     {
         Self::PART_LENGTHS.integrate_from(0)
     }
-    #[inline]
     pub const fn each_ptr(&self) -> [*const T; PART_LENGTHS.len()]
     {
         let ptr = self.as_ptr();
@@ -106,7 +99,6 @@ where
         Self::part_offsets()
             .map2(const |offset| unsafe {ptr.add(offset)})
     }
-    #[inline]
     pub const fn each_mut_ptr(&mut self) -> [*mut T; PART_LENGTHS.len()]
     {
         let ptr = self.as_mut_ptr();

@@ -8,7 +8,6 @@ pub struct ConstIter<'a, T, const LENGTH: usize>
 
 impl<'a, T, const N: usize> ConstIter<'a, T, N>
 {   
-    #[inline]
     pub const fn from(array: &'a [T; N]) -> Self
     {
         Self {
@@ -17,7 +16,6 @@ impl<'a, T, const N: usize> ConstIter<'a, T, N>
         }
     }
 
-    #[inline]
     pub const fn next(&mut self) -> Option<&T>
     {
         if self.i < N
@@ -32,7 +30,6 @@ impl<'a, T, const N: usize> ConstIter<'a, T, N>
         }
     }
     
-    #[inline]
     pub const fn next_enumerated(&mut self) -> Option<(usize, &T)>
     {
         if self.i < N
@@ -49,7 +46,6 @@ impl<'a, T, const N: usize> ConstIter<'a, T, N>
 }
 impl<'a, T, const N: usize> const From<&'a [T; N]> for ConstIter<'a, T, N>
 {
-    #[inline]
     fn from(value: &'a [T; N]) -> Self
     {
         Self::from(value)
@@ -61,7 +57,6 @@ impl<T, const N: usize> const ConstIterator for ConstIter<'_, T, N>
     where
         Self: 'a;
 
-    #[inline]
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>
     {
         Self::next(self)

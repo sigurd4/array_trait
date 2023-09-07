@@ -161,13 +161,11 @@ mod private
     where
         [(); crate::sum_len::<{P}>()]: {}
 
-    #[inline]
     pub(crate) const unsafe fn uninit<T>() -> T
     {
         MaybeUninit::assume_init(MaybeUninit::uninit())
     }
 
-    #[inline]
     pub(crate) const unsafe fn split_transmute<A, B, C>(a: A) -> (B, C)
     where
         A: NotTuple,
@@ -175,7 +173,6 @@ mod private
         transmute_unchecked_size::<_, Pair<_, _>>(a).unpack()
     }
 
-    #[inline]
     pub(crate) const unsafe fn merge_transmute<A, B, C>(a: A, b: B) -> C
     where
         C: NotTuple
@@ -183,13 +180,11 @@ mod private
         transmute_unchecked_size(Pair::new(a, b))
     }
 
-    #[inline]
     pub(crate) const unsafe fn overlap_swap_transmute<A, B>(a: A, b: B) -> (B, A)
     {
         split_transmute(Pair::new(a, b))
     }
     
-    #[inline]
     pub(crate) const unsafe fn transmute_unchecked_size<A, B>(from: A) -> B
     where
         A: NotTuple,

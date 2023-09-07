@@ -44,7 +44,6 @@ impl<T, const M: usize, const N: usize> const Array2dOps<T, M, N> for [[T; N]; M
 {
     type Array2d<I, const H: usize, const W: usize> = [[I; W]; H];
     
-    #[inline]
     fn transpose(self) -> Self::Transposed
     {
         // Alternative 1: (dirtier)

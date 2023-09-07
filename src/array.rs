@@ -81,21 +81,18 @@ impl<Item, const LENGTH: usize> const Array for [Item; LENGTH]
 {
     const LENGTH: usize = LENGTH;
 
-    #[inline]
     fn into_array<const N: usize>(self) -> [Self::Item;  N]
     where
         Self: Array<LENGTH = {N}>
     {
         unsafe {private::transmute_unchecked_size(self)}
     }
-    #[inline]
     fn as_array<const N: usize>(&self) -> &[Self::Item; N]
     where
         Self: Array<LENGTH = {N}>
     {
         unsafe {core::mem::transmute(self)}
     }
-    #[inline]
     fn as_array_mut<const N: usize>(&mut self) -> &mut [Self::Item; N]
     where
         Self: Array<LENGTH = {N}>

@@ -10,7 +10,6 @@ pub struct IntoConstIter<T, const LENGTH: usize, const DIR: bool, const ENUMERAT
 
 impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> IntoConstIter<T, N, DIR, ENUMERATE>
 {
-    #[inline]
     pub const fn from(array: [T; N]) -> Self
     {
         Self {
@@ -64,7 +63,6 @@ impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> IntoConstIter<T,
 
 impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR, false>
 {
-    #[inline]
     pub const fn next(&mut self) -> Option<T>
     {
         if self.i != if DIR {N} else {0}
@@ -91,7 +89,6 @@ impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR, false>
 
 impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR, true>
 {
-    #[inline]
     pub const fn next(&mut self) -> Option<(usize, T)>
     {
         if self.i != if DIR {N} else {0}
@@ -114,7 +111,6 @@ impl<T, const N: usize, const DIR: bool> IntoConstIter<T, N, DIR, true>
 
 impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> const From<[T; N]> for IntoConstIter<T, N, DIR, ENUMERATE>
 {
-    #[inline]
     fn from(value: [T; N]) -> Self
     {
         Self::from(value)
@@ -126,7 +122,6 @@ impl<T, const N: usize, const DIR: bool> const ConstIterator for IntoConstIter<T
     where
         Self: 'a;
 
-    #[inline]
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>
     {
         Self::next(self)
@@ -138,7 +133,6 @@ impl<T, const N: usize, const DIR: bool> const ConstIterator for IntoConstIter<T
     where
         Self: 'a;
 
-    #[inline]
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>
     {
         Self::next(self)

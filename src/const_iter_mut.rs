@@ -8,7 +8,6 @@ pub struct ConstIterMut<'a, T, const LENGTH: usize>
 
 impl<'a, T, const N: usize> ConstIterMut<'a, T, N>
 {   
-    #[inline]
     pub const fn from(array: &'a mut [T; N]) -> Self
     {
         Self {
@@ -17,7 +16,6 @@ impl<'a, T, const N: usize> ConstIterMut<'a, T, N>
         }
     }
 
-    #[inline]
     pub const fn next(&mut self) -> Option<&mut T>
     {
         if self.i < N
@@ -34,7 +32,6 @@ impl<'a, T, const N: usize> ConstIterMut<'a, T, N>
 }
 impl<'a, T, const N: usize> const From<&'a mut [T; N]> for ConstIterMut<'a, T, N>
 {
-    #[inline]
     fn from(value: &'a mut [T; N]) -> Self
     {
         Self::from(value)
@@ -46,7 +43,6 @@ impl<T, const N: usize> const ConstIterator for ConstIterMut<'_, T, N>
     where
         Self: 'a;
 
-    #[inline]
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>
     {
         Self::next(self)

@@ -308,6 +308,17 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const Div<Rhs>,
         Rhs: Copy;
+        
+    fn add_all_neg<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Sub<T>>::Output>
+    where
+        Rhs: Copy + ~const Sub<T>;
+    fn mul_all_inv<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Div<T>>::Output>
+    where
+        Rhs: Copy + ~const Div<T>;
+    
+    fn neg_all(self) -> [<T as Neg>::Output; N]
+    where
+        T: ~const Neg;
     
     fn add_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Add<Rhs>>::Output>
     where
@@ -1536,6 +1547,26 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         Rhs: Copy
     {
         self.map2(const |x| x/rhs)
+    }
+    
+    fn add_all_neg<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Sub<T>>::Output>
+    where
+        Rhs: Copy + ~const Sub<T>
+    {
+        self.map2(const |x| rhs - x)
+    }
+    fn mul_all_inv<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Div<T>>::Output>
+    where
+        Rhs: Copy + ~const Div<T>
+    {
+        self.map2(const |x| rhs/x)
+    }
+    
+    fn neg_all(self) -> [<T as Neg>::Output; N]
+    where
+        T: ~const Neg
+    {
+        self.map2(const |x| -x)
     }
     
     fn add_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Add<Rhs>>::Output; N]

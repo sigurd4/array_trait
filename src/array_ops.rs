@@ -1484,14 +1484,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         T: ~const PartialOrd<T>
     {
-        self.reduce(const |a, b| if a > b {a} else {b})
+        self.reduce(const |a, b| if a >= b {a} else {b})
     }
         
     fn minimum(self) -> Option<T>
     where
         T: ~const PartialOrd<T>
     {
-        self.reduce(const |a, b| if a < b {a} else {b})
+        self.reduce(const |a, b| if a <= b {a} else {b})
     }
     
     fn argmax(self) -> Option<usize>

@@ -184,9 +184,18 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// 
     /// assert_eq!(B, [-1, -2, -3, -4]);
     /// ```
-    fn map2<M>(self, map: M) -> Self::Mapped<M>
+    fn map2<Map>(self, map: Map) -> Self::Mapped<Map>
     where
-        M: ~const FnMut<(T,)> + ~const Destruct;
+        Map: ~const FnMut<(T,)> + ~const Destruct;
+    fn comap<Map, Rhs>(self, rhs: [Rhs; N], map: Map) -> Self::MappedTo<Map::Output>
+    where
+        Map: ~const FnMut<(T, Rhs)> + ~const Destruct;
+    fn comap_outer<Map, Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>, map: Map)
+        -> Self::MappedTo<Self::Array<<Map as FnOnce<(T, Rhs)>>::Output, M>>
+    where
+        Map: ~const FnMut<(T, Rhs)> + ~const Destruct,
+        T: Copy,
+        Rhs: Copy;
 
     /// Combines two arrays with possibly different items into parallel, where each element lines up in the same position.
     /// 
@@ -206,6 +215,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// assert_eq!(C, [(4, "four"), (3, "three"), (2, "two"), (1, "one")]);
     /// ```
     fn zip2<Z>(self, other: Self::Array<Z, N>) -> Self::Zipped<Z>;
+    fn zip_outer<Z, const M: usize>(&self, other: &Self::Array<Z, M>) -> Self::MappedTo<Self::Array<(T, Z), M>>
+    where
+        T: Copy,
+        Z: Copy;
 
     fn enumerate(self) -> Self::Enumerated;
     
@@ -1315,19 +1328,42 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         ConstIterMut::from(self)
     }
     
-    fn map2<M>(self, mut map: M) -> [M::Output; N]
+    fn map2<Map>(self, mut map: Map) -> [Map::Output; N]
     where
-        M: ~const FnMut<(T,)> + ~const Destruct
+        Map: ~const FnMut<(T,)> + ~const Destruct
     {
         let mut iter = ManuallyDrop::new(self.into_const_iter());
         ArrayOps::fill(const |_| map(iter.deref_mut().next().unwrap()))
     }
+
+    fn comap<Map, Rhs>(self, rhs: [Rhs; N], mut map: Map) -> [Map::Output; N]
+    where
+        Map: ~const FnMut<(T, Rhs)> + ~const Destruct
+    {
+        let mut iter_self = ManuallyDrop::new(self.into_const_iter());
+        let mut iter_rhs = ManuallyDrop::new(rhs.into_const_iter());
+        ArrayOps::fill(const |_| map(iter_self.deref_mut().next().unwrap(), iter_rhs.deref_mut().next().unwrap()))
+    }
+    fn comap_outer<Map, Rhs, const M: usize>(&self, rhs: &[Rhs; M], mut map: Map) -> [[Map::Output; M]; N]
+    where
+        Map: ~const FnMut<(T, Rhs)> + ~const Destruct,
+        T: Copy,
+        Rhs: Copy
+    {
+        self.map2(const |x| rhs.map2(const |y| map(x, y)))
+    }
     
     fn zip2<Z>(self, other: Self::Array<Z, N>) -> [(T, Z); N]
     {
-        let mut iter_self = ManuallyDrop::new(self.into_const_iter());
-        let mut iter_other = ManuallyDrop::new(other.into_const_iter());
-        ArrayOps::fill(const |_| (iter_self.deref_mut().next().unwrap(), iter_other.deref_mut().next().unwrap()))
+        self.comap(other, const |x, y| (x, y))
+    }
+    
+    fn zip_outer<Z, const M: usize>(&self, other: &Self::Array<Z, M>) -> Self::MappedTo<Self::Array<(T, Z), M>>
+    where
+        T: Copy,
+        Z: Copy
+    {
+        self.comap_outer(other, const |x, y| (x, y))
     }
     
     fn enumerate(self) -> [(usize, T); N]

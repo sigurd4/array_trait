@@ -187,6 +187,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn map2<Map>(self, map: Map) -> Self::Mapped<Map>
     where
         Map: ~const FnMut<(T,)> + ~const Destruct;
+    fn map_outer<Map>(&self, map: Map) -> Self::MappedTo<Self::MappedTo<<Map as FnOnce<(T, T)>>::Output>>
+    where
+        Map: ~const FnMut<(T, T)> + ~const Destruct,
+        T: Copy;
     fn comap<Map, Rhs>(self, rhs: [Rhs; N], map: Map) -> Self::MappedTo<Map::Output>
     where
         Map: ~const FnMut<(T, Rhs)> + ~const Destruct;
@@ -1334,6 +1338,13 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut iter = ManuallyDrop::new(self.into_const_iter());
         ArrayOps::fill(const |_| map(iter.deref_mut().next().unwrap()))
+    }
+    fn map_outer<Map>(&self, map: Map) -> [[Map::Output; N]; N]
+    where
+        Map: ~const FnMut<(T, T)> + ~const Destruct,
+        T: Copy
+    {
+        self.comap_outer(self, map)
     }
 
     fn comap<Map, Rhs>(self, rhs: [Rhs; N], mut map: Map) -> [Map::Output; N]

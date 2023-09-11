@@ -1290,7 +1290,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         if N == M
         {
-            Some(unsafe {&mut *self.as_mut_ptr().cast()})
+            Some(unsafe {&*self.as_ptr().cast()})
         }
         else
         {
@@ -1302,7 +1302,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         if N == M
         {
-            Some(unsafe {&*self.as_ptr().cast()})
+            Some(unsafe {&mut *self.as_mut_ptr().cast()})
         }
         else
         {

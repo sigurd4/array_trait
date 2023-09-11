@@ -941,7 +941,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
     {
-        let mut array = unsafe {MaybeUninit::array_assume_init(MaybeUninit::uninit_array())};
+        let mut array = unsafe {private::uninit()};
         let mut ptr = &mut array as *mut T;
 
         unsafe {core::ptr::copy_nonoverlapping(&self as *const T, ptr, N.min(M))};
@@ -961,7 +961,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         F: ~const FnMut(usize) -> T + ~const Destruct,
         T: ~const Destruct
     {
-        let mut array = unsafe {MaybeUninit::array_assume_init(MaybeUninit::uninit_array())};
+        let mut array = unsafe {private::uninit()};
         let mut ptr = unsafe {(&mut array as *mut T).add(M.saturating_sub(N))};
         
         unsafe {core::ptr::copy_nonoverlapping(&self as *const T, ptr, N.min(M))};
@@ -985,7 +985,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let (src_left, src_right) = self.split_ptr::<true>(n);
 
         unsafe {
-            let (dst_left, dst_right) = rotated.assume_init_mut().rsplit_mut_ptr::<true>(n);
+            let (dst_left, dst_right) = rotated.assume_init_mut()
+                .rsplit_mut_ptr::<true>(n);
 
             core::ptr::copy_nonoverlapping(src_right, dst_left, right);
             core::ptr::copy_nonoverlapping(src_left, dst_right, left);
@@ -1006,7 +1007,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let (src_left, src_right) = self.rsplit_ptr::<true>(n);
 
         unsafe {
-            let (dst_left, dst_right) = rotated.assume_init_mut().split_mut_ptr::<true>(n);
+            let (dst_left, dst_right) = rotated.assume_init_mut()
+                .split_mut_ptr::<true>(n);
 
             core::ptr::copy_nonoverlapping(src_right, dst_left, right);
             core::ptr::copy_nonoverlapping(src_left, dst_right, left);
@@ -1186,12 +1188,12 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn from_item_ref(item: &T) -> &[T; 1]
     {
-        unsafe {core::mem::transmute(item)}
+        unsafe {&*(item as *const T).cast()}
     }
 
     fn from_item_mut(item: &mut T) -> &mut [T; 1]
     {
-        unsafe {core::mem::transmute(item)}
+        unsafe {&mut *(item as *mut T).cast()}
     }
     
     fn into_single_item(self) -> T
@@ -1248,7 +1250,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); M - N]:,
         [(); N - M]:
     {
-        unsafe {core::mem::transmute(self)}
+        unsafe {&*self.as_ptr().cast()}
     }
         
     fn reformulate_length_mut<const M: usize>(&mut self) -> &mut [T; M]
@@ -1256,7 +1258,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); M - N]:,
         [(); N - M]:
     {
-        unsafe {core::mem::transmute(self)}
+        unsafe {&mut *self.as_mut_ptr().cast()}
     }
     
     fn try_reformulate_length<const M: usize>(self) -> Result<[T; M], Self>
@@ -1275,7 +1277,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         if N == M
         {
-            Some(unsafe {core::mem::transmute(self)})
+            Some(unsafe {&mut *self.as_mut_ptr().cast()})
         }
         else
         {
@@ -1287,7 +1289,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         if N == M
         {
-            Some(unsafe {core::mem::transmute(self)})
+            Some(unsafe {&*self.as_ptr().cast()})
         }
         else
         {
@@ -1497,7 +1499,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         T: ~const PartialOrd<T>
     {
         self.enumerate()
-            .reduce(const |a, b| if a.1 > b.1 {a} else {b})
+            .reduce(const |a, b| if a.1 >= b.1 {a} else {b})
             .map(const |(i, _)| i)
     }
         
@@ -1506,7 +1508,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         T: ~const PartialOrd<T>
     {
         self.enumerate()
-            .reduce(const |a, b| if a.1 < b.1 {a} else {b})
+            .reduce(const |a, b| if a.1 <= b.1 {a} else {b})
             .map(const |(i, _)| i)
     }
 
@@ -1614,32 +1616,32 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         T: ~const Neg
     {
-        self.map2(const |x| -x)
+        self.map2(Neg::neg)
     }
     
     fn add_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Add<Rhs>>::Output; N]
     where
         T: ~const Add<Rhs>
     {
-        self.zip2(rhs).map2(const |(x, rhs)| x + rhs)
+        self.comap(rhs, Add::add)
     }
     fn sub_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Sub<Rhs>>::Output; N]
     where
         T: ~const Sub<Rhs>
     {
-        self.zip2(rhs).map2(const |(x, rhs)| x - rhs)
+        self.comap(rhs, Sub::sub)
     }
     fn mul_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Mul<Rhs>>::Output; N]
     where
         T: ~const Mul<Rhs>
     {
-        self.zip2(rhs).map2(const |(x, rhs)| x*rhs)
+        self.comap(rhs, Mul::mul)
     }
     fn div_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Div<Rhs>>::Output; N]
     where
         T: ~const Div<Rhs>
     {
-        self.zip2(rhs).map2(const |(x, rhs)| x/rhs)
+        self.comap(rhs, Div::div)
     }
 
     fn mul_dot<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> <T as Mul<Rhs>>::Output
@@ -1661,7 +1663,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         T: ~const Mul<Rhs> + Copy,
         Rhs: Copy
     {
-        self.map2(const |u| rhs.map2(const |v| u*v))
+        self.comap_outer(rhs, Mul::mul)
     }
     
     fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> [T; N + M]
@@ -1697,11 +1699,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
         unsafe {(
             ArrayOps::fill(const |_| {
-                let slice = core::mem::transmute(left);
+                let slice = &*left.cast();
                 left = left.add(1);
                 slice
             }),
-            core::mem::transmute(right)
+            &*right.cast()
         )}
     }
     fn array_spread_mut<const M: usize>(&mut self) -> ([&mut Self::PaddedArray<T, M, {N / M}>; M], &mut [T; N % M])
@@ -1713,11 +1715,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
         unsafe {(
             ArrayOps::fill(const |_| {
-                let slice = core::mem::transmute(left);
+                let slice = &mut *left.cast();
                 left = left.add(1);
                 slice
             }),
-            core::mem::transmute(right)
+            &mut *right.cast()
         )}
     }
     
@@ -1743,9 +1745,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let (left, mut right) = self.split_ptr::<false>(N % M);
 
         unsafe {(
-            core::mem::transmute(left),
+            &*left.cast(),
             ArrayOps::fill(const |_| {
-                let slice = core::mem::transmute(right);
+                let slice = &*right.cast();
                 right = right.add(1);
                 slice
             })
@@ -1759,9 +1761,9 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let (left, mut right) = self.split_mut_ptr::<false>(N % M);
 
         unsafe {(
-            core::mem::transmute(left),
+            &mut *left.cast(),
             ArrayOps::fill(const |_| {
-                let slice = core::mem::transmute(right);
+                let slice = &mut *right.cast();
                 right = right.add(1);
                 slice
             })
@@ -1786,7 +1788,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let mut ptr = self as *const T;
         
         ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
+            let slice = unsafe {&*ptr.cast()};
             ptr = unsafe {ptr.add(1)};
             slice
         })
@@ -1799,7 +1801,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let mut ptr = self as *mut T;
         
         ArrayOps::fill(const |_| {
-            let slice = unsafe {core::mem::transmute(ptr)};
+            let slice = unsafe {&mut *ptr.cast()};
             ptr = unsafe {ptr.add(1)};
             slice
         })
@@ -1811,13 +1813,13 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn array_chunks_ref<const M: usize>(&self) -> (&[[T; M]; N / M], &[T; N % M])
     {
-        let (left, right) = self.rsplit_ptr::<false>(N % M);
-        unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
+        let (ptr_left, ptr_right) = self.rsplit_ptr::<false>(N % M);
+        unsafe {(&*ptr_left.cast(), &*ptr_right.cast())}
     }
     fn array_chunks_mut<const M: usize>(&mut self) -> (&mut [[T; M]; N / M], &mut [T; N % M])
     {
-        let (left, right) = self.rsplit_mut_ptr::<false>(N % M);
-        unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
+        let (ptr_left, ptr_right) = self.rsplit_mut_ptr::<false>(N % M);
+        unsafe {(&mut *ptr_left.cast(), &mut *ptr_right.cast())}
     }
 
     fn array_rchunks<const M: usize>(self) -> ([T; N % M], [[T; M]; N / M])
@@ -1826,13 +1828,13 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn array_rchunks_ref<const M: usize>(&self) -> (&[T; N % M], &[[T; M]; N / M])
     {
-        let (left, right) = self.split_ptr::<false>(N % M);
-        unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
+        let (ptr_left, ptr_right) = self.split_ptr::<false>(N % M);
+        unsafe {(&*ptr_left.cast(), &*ptr_right.cast())}
     }
     fn array_rchunks_mut<const M: usize>(&mut self) -> (&mut [T; N % M], &mut [[T; M]; N / M])
     {
-        let (left, right) = self.split_mut_ptr::<false>(N % M);
-        unsafe {(core::mem::transmute(left), core::mem::transmute(right))}
+        let (ptr_left, ptr_right) = self.split_mut_ptr::<false>(N % M);
+        unsafe {(&mut *ptr_left.cast(), &mut *ptr_right.cast())}
     }
     
     fn array_chunks_exact<const M: usize>(self) -> [[T; M]; N / M]
@@ -1847,14 +1849,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); 0 - N % M]:,
         [(); N / M]:
     {
-        unsafe {core::mem::transmute(self as *const T)}
+        unsafe {&*self.as_ptr().cast()}
     }
     fn array_chunks_exact_mut<const M: usize>(&mut self) -> &mut [[T; M]; N / M]
     where
         [(); 0 - N % M]:,
         [(); N / M]:
     {
-        unsafe {core::mem::transmute(self as *mut T)}
+        unsafe {&mut *self.as_mut_ptr().cast()}
     }
     
     fn split_array<const M: usize>(self) -> ([T; M], [T; N - M])
@@ -1868,14 +1870,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); N - M]:
     {
         let (ptr_left, ptr_right) = self.split_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
+        unsafe {(&*ptr_left.cast(), &*ptr_right.cast())}
     }
     fn split_array_mut2<const M: usize>(&mut self) -> (&mut [T; M], &mut [T; N - M])
     where
         [(); N - M]:
     {
         let (ptr_left, ptr_right) = self.split_mut_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
+        unsafe {(&mut *ptr_left.cast(), &mut *ptr_right.cast())}
     }
     
     fn rsplit_array<const M: usize>(self) -> ([T; N - M], [T; M])
@@ -1889,14 +1891,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         [(); N - M]:
     {
         let (ptr_left, ptr_right) = self.rsplit_mut_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
+        unsafe {(&mut *ptr_left.cast(), &mut *ptr_right.cast())}
     }
     fn rsplit_array_ref2<const M: usize>(&self) -> (&[T; N - M], &[T; M])
     where
         [(); N - M]:
     {
         let (ptr_left, ptr_right) = self.rsplit_ptr::<false>(M);
-        unsafe {(core::mem::transmute(ptr_left), core::mem::transmute(ptr_right))}
+        unsafe {(&*ptr_left.cast(), &*ptr_right.cast())}
     }
 
     fn each_ref2<B>(&self) -> [&B; N]
@@ -1905,7 +1907,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut ptr = self as *const T;
         ArrayOps::fill(const |_| {
-            let y = unsafe {core::mem::transmute::<_, &T>(ptr)}.borrow();
+            let y = unsafe {&*ptr}.borrow();
             ptr = unsafe {ptr.add(1)};
             y
         })
@@ -1916,7 +1918,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut ptr = self as *mut T;
         ArrayOps::fill(const |_| {
-            let y = unsafe {core::mem::transmute::<_, &mut T>(ptr)}.borrow_mut();
+            let y = unsafe {&mut *ptr}.borrow_mut();
             ptr = unsafe {ptr.add(1)};
             y
         })

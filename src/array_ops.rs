@@ -281,11 +281,11 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const Ord;
         
-    fn maximum(self) -> Option<T>
+    fn first_max(self) -> Option<T>
     where
         T: ~const PartialOrd<T>;
         
-    fn minimum(self) -> Option<T>
+    fn first_min(self) -> Option<T>
     where
         T: ~const PartialOrd<T>;
         
@@ -1480,14 +1480,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         self.reduce(T::min)
     }
     
-    fn maximum(self) -> Option<T>
+    fn first_max(self) -> Option<T>
     where
         T: ~const PartialOrd<T>
     {
         self.reduce(const |a, b| if a >= b {a} else {b})
     }
         
-    fn minimum(self) -> Option<T>
+    fn first_min(self) -> Option<T>
     where
         T: ~const PartialOrd<T>
     {

@@ -225,6 +225,12 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         Z: Copy;
 
     fn enumerate(self) -> Self::Enumerated;
+
+    fn diagonal<const H: usize, const W: usize>(self) -> Self::Array<Self::Resized<W>, H>
+    where
+        T: ~const Default + Copy,
+        [(); H - N]:,
+        [(); W - N]:;
     
     /// Differentiates array (discrete calculus)
     /// 
@@ -1381,6 +1387,32 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut iter_self = ManuallyDrop::new(self.into_const_iter());
         ArrayOps::fill(const |i| (i, iter_self.deref_mut().next().unwrap()))
+    }
+    
+    fn diagonal<const H: usize, const W: usize>(self) -> Self::Array<Self::Resized<W>, H>
+    where
+        T: ~const Default,
+        [(); H - N]:,
+        [(); W - N]:
+    {
+        // May need optimization
+        // I think this could run faster if T: Copy, but i would like to avoid this restriction
+        
+        let mut iter = self.into_const_iter();
+        
+        let matrix = ArrayOps::fill(const |i| ArrayOps::fill(const |j| if i == j
+            {
+                iter.next()
+            }
+            else
+            {
+                None
+            }.unwrap_or_default()
+        ));
+
+        core::mem::forget(iter);
+
+        matrix
     }
 
     fn differentiate(self) -> [<T as Sub<T>>::Output; N.saturating_sub(1)]

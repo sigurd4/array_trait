@@ -1,4 +1,4 @@
-use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, Add, Neg}, mem::ManuallyDrop};
+use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, Add, Neg, MulAssign}, mem::ManuallyDrop};
 
 use core::ops::Deref;
 
@@ -295,6 +295,10 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn sum_from(self, from: T) -> T
     where
         T: ~const AddAssign;
+        
+    fn product_from(self, from: T) -> T
+    where
+        T: ~const MulAssign;
 
     fn max(self) -> Option<T>
     where
@@ -1508,6 +1512,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     where
         T: ~const Default + ~const AddAssign
     {
+        //self.sum_from(T::default())
+
         let mut iter = ManuallyDrop::new(self.into_const_iter());
 
         let mut next = ManuallyDrop::new(iter.deref_mut().next());
@@ -1545,6 +1551,25 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         {
             let x = unsafe {ManuallyDrop::into_inner(next).unwrap_unchecked()};
             reduction += x;
+        }
+        reduction
+    }
+
+    fn product_from(self, from: T) -> T
+    where
+        T: ~const MulAssign
+    {
+        let mut iter = ManuallyDrop::new(self.into_const_iter());
+
+        let mut next;
+        let mut reduction = from;
+        while {
+            next = ManuallyDrop::new(iter.deref_mut().next());
+            next.deref().is_some()
+        }
+        {
+            let x = unsafe {ManuallyDrop::into_inner(next).unwrap_unchecked()};
+            reduction *= x;
         }
         reduction
     }

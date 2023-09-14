@@ -8,6 +8,9 @@ repository = "https://github.com/sigurd4/array_trait"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+float_approx_math = ["dep:float_approx_math"]
+
 [dependencies]
 moddef = "0.2.2"
-float_approx_math = "0.1.0"
+float_approx_math = {version = "0.1.0", optional = true}

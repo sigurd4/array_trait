@@ -2,6 +2,7 @@ use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, Add, Neg}, mem::ManuallyDro
 
 use core::ops::Deref;
 
+#[cfg(feature = "float_approx_math")]
 use float_approx_math::ApproxSqrt;
 
 use super::*;
@@ -393,10 +394,12 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default> + Copy;
     
+    #[cfg(feature = "float_approx_math")]
     fn magnitude(self) -> <T as Mul<T>>::Output
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt> + Copy;
 
+    #[cfg(feature = "float_approx_math")]
     fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy;
@@ -1768,6 +1771,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         self.mul_dot(self)
     }
     
+    #[cfg(feature = "float_approx_math")]
     fn magnitude(self) -> <T as Mul<T>>::Output
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt> + Copy
@@ -1775,6 +1779,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         self.magnitude_squared().approx_sqrt::<{APPROX_SQRT_N}>()
     }
 
+    #[cfg(feature = "float_approx_math")]
     fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy

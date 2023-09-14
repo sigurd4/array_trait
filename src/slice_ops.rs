@@ -102,5 +102,5 @@ fn test()
 
     let ar: &[u8] = &a;
 
-    let split = ar.rsplit_array_ref2::<2>();
+    let _split = ar.rsplit_array_ref2::<2>();
 }

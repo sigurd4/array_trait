@@ -1,4 +1,4 @@
-use core::{mem::ManuallyDrop, ops::{Mul, AddAssign}};
+use core::ops::{Mul, AddAssign};
 
 use super::*;
 

@@ -7,6 +7,7 @@ use float_approx_math::ApproxSqrt;
 
 use super::*;
 
+#[cfg(feature = "float_approx_math")]
 const APPROX_SQRT_N: usize = 3;
 
 #[const_trait]

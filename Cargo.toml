@@ -1,6 +1,6 @@
 [package]
 name = "array_trait"
-version = "0.6.11"
+version = "0.6.12"
 edition = "2021"
 license = "MIT"
 description = "A generic trait for any array"

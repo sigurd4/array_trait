@@ -13,4 +13,4 @@ float_approx_math = ["dep:float_approx_math"]
 
 [dependencies]
 moddef = "0.2.2"
-float_approx_math = {version = "0.1.1", optional = true}
+float_approx_math = {version = "0.1.2", optional = true, features = ["sqrt"]}

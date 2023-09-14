@@ -3,7 +3,7 @@ use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, Add, Neg}, mem::ManuallyDro
 use core::ops::Deref;
 
 #[cfg(feature = "float_approx_math")]
-use float_approx_math::ApproxSqrt;
+use float_approx_math::{ApproxSqrt, ApproxInvSqrt};
 
 use super::*;
 
@@ -401,9 +401,9 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt> + Copy;
 
     #[cfg(feature = "float_approx_math")]
-    fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
+    fn normalize(self) -> Self::MappedTo<<T as Mul<<T as Mul<T>>::Output>>::Output>
     where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy;
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxInvSqrt + Copy> + ~const Mul<<T as Mul<T>>::Output> + Copy;
 
     /// Chains two arrays with the same item together.
     /// 
@@ -1781,12 +1781,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
 
     #[cfg(feature = "float_approx_math")]
-    fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
+    fn normalize(self) -> Self::MappedTo<<T as Mul<<T as Mul<T>>::Output>>::Output>
     where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxInvSqrt + Copy> + ~const Mul<<T as Mul<T>>::Output> + Copy
     {
-        // Use fast inverse square root later
-        self.div_all(self.magnitude_squared().approx_sqrt::<{APPROX_SQRT_N}>())
+        self.mul_all(self.magnitude_squared().approx_inv_sqrt::<{APPROX_SQRT_N}>())
     }
 
     

@@ -10,3 +10,4 @@ repository = "https://github.com/sigurd4/array_trait"
 
 [dependencies]
 moddef = "0.2.2"
+float_approx_math = "0.1.0"

@@ -2,7 +2,11 @@ use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, Add, Neg}, mem::ManuallyDro
 
 use core::ops::Deref;
 
+use float_approx_math::ApproxSqrt;
+
 use super::*;
+
+const APPROX_SQRT_N: usize = 3;
 
 #[const_trait]
 pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
@@ -385,13 +389,17 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         T: ~const Mul<Rhs> + Copy,
         Rhs: Copy;
 
-    fn magnitude(self) -> <T as Mul<T>>::Output
+    fn magnitude_squared(self) -> <T as Mul<T>>::Output
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default> + Copy;
+    
+    fn magnitude(self) -> <T as Mul<T>>::Output
+    where
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt> + Copy;
 
     fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
     where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy;
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy;
 
     /// Chains two arrays with the same item together.
     /// 
@@ -1753,19 +1761,28 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         self.comap_outer(rhs, Mul::mul)
     }
     
-    fn magnitude(self) -> <T as Mul<T>>::Output
+    fn magnitude_squared(self) -> <T as Mul<T>>::Output
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default> + Copy
     {
         self.mul_dot(self)
     }
+    
+    fn magnitude(self) -> <T as Mul<T>>::Output
+    where
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt> + Copy
+    {
+        self.magnitude_squared().approx_sqrt::<{APPROX_SQRT_N}>()
+    }
 
     fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
     where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy
     {
-        self.div_all(self.magnitude())
+        // Use fast inverse square root later
+        self.div_all(self.magnitude_squared().approx_sqrt::<{APPROX_SQRT_N}>())
     }
+
     
     fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> [T; N + M]
     {

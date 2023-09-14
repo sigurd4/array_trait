@@ -385,6 +385,14 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
         T: ~const Mul<Rhs> + Copy,
         Rhs: Copy;
 
+    fn magnitude(self) -> <T as Mul<T>>::Output
+    where
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default> + Copy;
+
+    fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
+    where
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy;
+
     /// Chains two arrays with the same item together.
     /// 
     /// # Example
@@ -1743,6 +1751,20 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         Rhs: Copy
     {
         self.comap_outer(rhs, Mul::mul)
+    }
+    
+    fn magnitude(self) -> <T as Mul<T>>::Output
+    where
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default> + Copy
+    {
+        self.mul_dot(self)
+    }
+
+    fn normalize(self) -> Self::MappedTo<<T as Div<<T as Mul<T>>::Output>>::Output>
+    where
+        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + Copy> + ~const Div<<T as Mul<T>>::Output> + Copy
+    {
+        self.div_all(self.magnitude())
     }
     
     fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> [T; N + M]

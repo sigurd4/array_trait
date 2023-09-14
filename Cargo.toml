@@ -3,14 +3,10 @@ name = "array_trait"
 version = "0.6.14"
 edition = "2021"
 license = "MIT"
-description = "A generic trait for any array"
+description = "A generic trait for any array, providing many useful compile-time operations on arrays"
 repository = "https://github.com/sigurd4/array_trait"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-float_approx_math = ["dep:float_approx_math"]
-
 [dependencies]
 moddef = "0.2.2"
-float_approx_math = {version = "0.1.2", optional = true, features = ["sqrt"]}

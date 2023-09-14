@@ -2,13 +2,7 @@ use core::{ops::{Sub, AddAssign, DerefMut, Mul, Div, Add, Neg}, mem::ManuallyDro
 
 use core::ops::Deref;
 
-#[cfg(feature = "float_approx_math")]
-use float_approx_math::{ApproxSqrt, ApproxInvSqrt};
-
 use super::*;
-
-#[cfg(feature = "float_approx_math")]
-const APPROX_SQRT_N: usize = 3;
 
 #[const_trait]
 pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
@@ -394,21 +388,6 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn magnitude_squared(self) -> <T as Mul<T>>::Output
     where
         T: ~const Mul<T, Output: ~const AddAssign + ~const Default> + Copy;
-    
-    #[cfg(feature = "float_approx_math")]
-    fn magnitude(self) -> <T as Mul<T>>::Output
-    where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt> + Copy;
-
-    #[cfg(feature = "float_approx_math")]
-    fn normalize(self) -> Self::MappedTo<<T as Mul<<T as Mul<T>>::Output>>::Output>
-    where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxInvSqrt + Copy> + ~const Mul<<T as Mul<T>>::Output> + Copy;
-        
-    #[cfg(feature = "float_approx_math")]
-    fn normalize_to<Rhs>(self, magnitude: Rhs) -> Self::MappedTo<<T as Mul<<<T as Mul<T>>::Output as Mul<Rhs>>::Output>>::Output>
-    where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxInvSqrt + ~const Mul<Rhs, Output: Copy>> + ~const Mul<<<T as Mul<T>>::Output as Mul<Rhs>>::Output> + Copy;
 
     /// Chains two arrays with the same item together.
     /// 
@@ -1776,31 +1755,6 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         self.mul_dot(self)
     }
-    
-    #[cfg(feature = "float_approx_math")]
-    fn magnitude(self) -> <T as Mul<T>>::Output
-    where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxSqrt> + Copy
-    {
-        self.magnitude_squared().approx_sqrt::<{APPROX_SQRT_N}>()
-    }
-
-    #[cfg(feature = "float_approx_math")]
-    fn normalize(self) -> Self::MappedTo<<T as Mul<<T as Mul<T>>::Output>>::Output>
-    where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxInvSqrt + Copy> + ~const Mul<<T as Mul<T>>::Output> + Copy
-    {
-        self.mul_all(self.magnitude_squared().approx_inv_sqrt::<{APPROX_SQRT_N}>())
-    }
-
-    #[cfg(feature = "float_approx_math")]
-    fn normalize_to<Rhs>(self, magnitude: Rhs) -> Self::MappedTo<<T as Mul<<<T as Mul<T>>::Output as Mul<Rhs>>::Output>>::Output>
-    where
-        T: ~const Mul<T, Output: ~const AddAssign + ~const Default + ~const ApproxInvSqrt + ~const Mul<Rhs, Output: Copy>> + ~const Mul<<<T as Mul<T>>::Output as Mul<Rhs>>::Output> + Copy
-    {
-        self.mul_all(self.magnitude_squared().approx_inv_sqrt::<{APPROX_SQRT_N}>()*magnitude)
-    }
-
     
     fn chain<const M: usize>(self, rhs: Self::Array<T, M>) -> [T; N + M]
     {

@@ -314,14 +314,14 @@ mod tests {
         ];
 
         const GPA_UNI: f32 = GRADES_UNI.map2(const |(pts, grade)| (pts*grade as u8) as u16)
-            .sum() as f32
+            .sum_from(0) as f32
             /GRADES_UNI.map2(const |(pts, _)| pts as u16)
-            .sum() as f32;
+            .sum_from(0) as f32;
 
         println!("{}", GPA_UNI);
 
         const GPA_VGS: f32 = GRADES_VGS.map2(const |grade| grade as u16)
-            .sum() as f32
+            .sum_from(0) as f32
             /GRADES_VGS.len() as f32;
             
         println!("{}", GPA_VGS);

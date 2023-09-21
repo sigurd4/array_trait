@@ -64,9 +64,6 @@ moddef::moddef!(
         into_const_iter,
         const_iter,
         const_iter_mut,
-    },
-    pub mod {
-        ops
     }
 );
 

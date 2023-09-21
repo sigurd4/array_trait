@@ -402,6 +402,27 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     where
         T: ~const Mul<Rhs> + Copy,
         Rhs: Copy;
+        
+    /// Computes the general cross-product of the two arrays (as if vectors, in the mathematical sense).
+    /// 
+    /// # Example
+    /// ```rust
+    /// #![feature(generic_const_exprs)]
+    /// #![feature(const_trait_impl)]
+    /// 
+    /// use array_trait::ArrayOps;
+    /// 
+    /// const U: [f64; 3] = [1.0, 0.0, 0.0];
+    /// const V: [f64; 3] = [0.0, 1.0, 0.0];
+    /// 
+    /// const W: [f64; 3] = U.mul_cross([&V]);
+    /// 
+    /// assert_eq!(W, [0.0, 0.0, 1.0]);
+    /// ```
+    fn mul_cross<Rhs>(&self, rhs: [&Self::MappedTo<Rhs>; N - 2]) -> Self::MappedTo<<T as Sub>::Output>
+    where
+        T: ~const MulAssign<Rhs> + ~const Sub + Copy,
+        Rhs: Copy;
 
     fn try_magnitude_squared(self) -> Option<<T as Mul<T>>::Output>
     where
@@ -1860,6 +1881,28 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         Rhs: Copy
     {
         self.comap_outer(rhs, Mul::mul)
+    }
+    
+    fn mul_cross<Rhs>(&self, rhs: [&Self::MappedTo<Rhs>; N - 2]) -> Self::MappedTo<<T as Sub>::Output>
+    where
+        T: ~const MulAssign<Rhs> + ~const Sub + Copy,
+        Rhs: Copy
+    {
+        ArrayOps::fill(const move |i| {
+            let mut m_p = self[(i + 1) % N];
+            let mut m_m = self[(i + (N - 1)) % N];
+
+            let mut n = 2;
+            while n < N
+            {
+                m_p *= rhs[n - 2][(i + n) % N];
+                m_m *= rhs[n - 2][(i + (N - n)) % N];
+                
+                n += 1;
+            }
+
+            m_p - m_m
+        })
     }
     
     fn try_magnitude_squared(self) -> Option<<T as Mul<T>>::Output>

@@ -1,10 +1,10 @@
 use super::*;
 
 /// A trait for N-dimensional arrays
-#[const_trait]
+//#[const_trait]
 pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
 {
-    type Mapped<M>: ~const ArrayNdOps<D, M, L>;
+    type Mapped<M>: /*~const*/ ArrayNdOps<D, M, L>;
 
     /// Fills an N-dimensional array. Indices passed to fill-function are sorted from outermost to innermost.
     /// 
@@ -30,7 +30,7 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// ```
     fn fill_nd<F>(fill: F) -> Self
     where
-        F: ~const FnMut([usize; D]) -> T + ~const Destruct;
+        F: /*~const*/ FnMut([usize; D]) -> T + /*~const*/ Destruct;
 
     /// Maps each element in the N-dimensional array.
     /// 
@@ -60,7 +60,7 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// ```
     fn map_nd<M>(self, map: M) -> Self::Mapped<<M as FnOnce<(T,)>>::Output>
     where
-        M: ~const FnMut<(T,)> + ~const Destruct;
+        M: /*~const*/ FnMut<(T,)> + /*~const*/ Destruct;
 
     /// Enumerates each element of an N-dimensional array. Indices are sorted from outermost to innermost.
     /// 
@@ -177,10 +177,10 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
 
     fn each_ref_nd<B>(&self) -> Self::Mapped<&B>
     where
-        T: ~const Borrow<B>;
+        T: /*~const*/ Borrow<B>;
     fn each_mut_nd<B>(&mut self) -> Self::Mapped<&mut B>
     where
-        T: ~const BorrowMut<B>;
+        T: /*~const*/ BorrowMut<B>;
 
     /// Reduces inner elements in N-dimensional array into one element, using a given operand
     /// 
@@ -202,8 +202,8 @@ pub trait ArrayNdOps<const D: usize, T, const L: usize>: ArrayPrereq
     /// ```
     fn reduce_nd<R>(self, reduce: R) -> Option<T>
     where
-        R: ~const FnMut(T, T) -> T + ~const Destruct,
-        T: ~const Destruct;
+        R: /*~const*/ FnMut(T, T) -> T + /*~const*/ Destruct,
+        T: /*~const*/ Destruct;
         
     /// Retrieves the inner item using an array of indices, sorted from outermost to innermost, as a reference
     /// 

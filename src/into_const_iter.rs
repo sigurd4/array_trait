@@ -18,7 +18,7 @@ impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> IntoConstIter<T,
         }
     }
     
-    pub const fn drop_copyable(self)
+    pub /*const*/ fn drop_copyable(self)
     where
         T: Copy
     {
@@ -39,9 +39,9 @@ impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> IntoConstIter<T,
         }
     }
 
-    pub const fn drop(self)
+    pub /*const*/ fn drop(self)
     where
-        T: ~const Destruct
+        T: /*~const*/ Destruct
     {
         let mut this = ManuallyDrop::new(self);
         let this_mut = this.deref_mut();

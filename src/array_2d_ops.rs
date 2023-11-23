@@ -2,7 +2,7 @@ use core::ops::{Mul, AddAssign};
 
 use super::*;
 
-#[const_trait]
+//#[const_trait]
 pub trait Array2dOps<T, const M: usize, const N: usize>: ArrayOps<[T; N], M>
 {
     type Array2d<I, const H: usize, const W: usize>: Array2dOps<I, H, W>;
@@ -36,7 +36,7 @@ pub trait Array2dOps<T, const M: usize, const N: usize>: ArrayOps<[T; N], M>
     
     fn mul_matrix<Rhs, const P: usize>(&self, rhs: &Self::Array2d<Rhs, N, P>) -> Self::Array2d<<T as Mul<Rhs>>::Output, M, P>
     where
-        T: ~const Mul<Rhs, Output: ~const AddAssign + ~const Default> + Copy,
+        T: /*~const*/ Mul<Rhs, Output: /*~const*/ AddAssign + /*~const*/ Default> + Copy,
         Rhs: Copy;
 }
 
@@ -76,7 +76,7 @@ impl<T, const M: usize, const N: usize> const Array2dOps<T, M, N> for [[T; N]; M
     
     fn mul_matrix<Rhs, const P: usize>(&self, rhs: &Self::Array2d<Rhs, N, P>) -> Self::Array2d<<T as Mul<Rhs>>::Output, M, P>
     where
-        T: ~const Mul<Rhs, Output: ~const AddAssign + ~const Default> + Copy,
+        T: /*~const*/ Mul<Rhs, Output: /*~const*/ AddAssign + /*~const*/ Default> + Copy,
         Rhs: Copy
     {
         let mut prod: [[<T as Mul<Rhs>>::Output; P]; M] = unsafe {private::uninit()};
@@ -96,8 +96,6 @@ impl<T, const M: usize, const N: usize> const Array2dOps<T, M, N> for [[T; N]; M
             }
             m += 1;
         }
-
-        core::mem::forget((self, rhs));
 
         prod
     }

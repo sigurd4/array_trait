@@ -4,55 +4,55 @@ use core::ops::Deref;
 
 use super::*;
 
-#[const_trait]
+//#[const_trait]
 pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     + Borrow<[T; N]>
     + BorrowMut<[T; N]>
 {
-    type Array<I, const L: usize>: ~const ArrayOps<I, L> = [I; L];
-    type PaddedItem<I, const W: usize>: ~const Borrow<I> + ~const BorrowMut<I>
+    type Array<I, const L: usize>: /*~const*/ ArrayOps<I, L> = [I; L];
+    type PaddedItem<I, const W: usize>: /*~const*/ Borrow<I> + /*~const*/ BorrowMut<I>
         = Padded<I, W>
     where
         [(); W - 1]:;
-    type PaddedArray<I, const W: usize, const L: usize>: ~const ArrayOps<Self::PaddedItem<I, W>, L>
+    type PaddedArray<I, const W: usize, const L: usize>: /*~const*/ ArrayOps<Self::PaddedItem<I, W>, L>
         = Self::Array<Self::PaddedItem<I, W>, L>
     where
         [(); W - 1]:;
     
-    type Resized<const M: usize>: ~const ArrayOps<T, M> = Self::Array<T, M>;
-    type Chained<const M: usize>: ~const ArrayOps<T, {N + M}> = Self::Array<T, {N + M}>
+    type Resized<const M: usize>: /*~const*/ ArrayOps<T, M> = Self::Array<T, M>;
+    type Chained<const M: usize>: /*~const*/ ArrayOps<T, {N + M}> = Self::Array<T, {N + M}>
     where
         [(); N + M]:;
-    type RChained<const M: usize>: ~const ArrayOps<T, {M + N}> = Self::Array<T, {M + N}>
+    type RChained<const M: usize>: /*~const*/ ArrayOps<T, {M + N}> = Self::Array<T, {M + N}>
     where
         [(); M + N]:;
 
-    type MappedTo<M>: ~const ArrayOps<M, N> = Self::Array<M, N>;
-    type Mapped<M>: ~const ArrayOps<M::Output, N> = Self::MappedTo<M::Output>
+    type MappedTo<M>: /*~const*/ ArrayOps<M, N> = Self::Array<M, N>;
+    type Mapped<M>: /*~const*/ ArrayOps<M::Output, N> = Self::MappedTo<M::Output>
     where
         M: FnOnce<(T,)>;
-    type Zipped<Z>: ~const ArrayOps<(T, Z), N> = Self::MappedTo<(T, Z)>;
-    type Enumerated: ~const ArrayOps<(usize, T), N> = <Self::MappedTo<usize> as ArrayOps<usize, N>>::Zipped<T>;
+    type Zipped<Z>: /*~const*/ ArrayOps<(T, Z), N> = Self::MappedTo<(T, Z)>;
+    type Enumerated: /*~const*/ ArrayOps<(usize, T), N> = <Self::MappedTo<usize> as ArrayOps<usize, N>>::Zipped<T>;
 
-    type Differentiated: ~const ArrayOps<<T as Sub<T>>::Output, {N.saturating_sub(1)}> = Self::Array<<T as Sub<T>>::Output, {N.saturating_sub(1)}>
+    type Differentiated: /*~const*/ ArrayOps<<T as Sub<T>>::Output, {N.saturating_sub(1)}> = Self::Array<<T as Sub<T>>::Output, {N.saturating_sub(1)}>
     where
         [(); N.saturating_sub(1)]:,
         T: Sub<T>;
 
-    type Split<const M: usize>: ~const ArrayOps<T, M> = Self::Resized<M>
+    type Split<const M: usize>: /*~const*/ ArrayOps<T, M> = Self::Resized<M>
     where
         [(); N - M]:;
-    type RSplit<const M: usize>: ~const ArrayOps<T, {N - M}> = Self::Resized<{N - M}>
+    type RSplit<const M: usize>: /*~const*/ ArrayOps<T, {N - M}> = Self::Resized<{N - M}>
     where
         [(); N - M]:;
 
-    type ResizedDiv<const M: usize>: ~const ArrayOps<T, {N / M}> = Self::Resized<{N / M}>
+    type ResizedDiv<const M: usize>: /*~const*/ ArrayOps<T, {N / M}> = Self::Resized<{N / M}>
     where
         [(); N / M]:;
-    type ResizedRem<const M: usize>: ~const ArrayOps<T, {N % M}> = Self::Resized<{N % M}>
+    type ResizedRem<const M: usize>: /*~const*/ ArrayOps<T, {N % M}> = Self::Resized<{N % M}>
     where
         [(); N % M]:;
-    type Chunks<const M: usize>: ~const ArrayOps<Self::Array<T, M>, {N / M}> = [Self::Array<T, M>; N / M]
+    type Chunks<const M: usize>: /*~const*/ ArrayOps<Self::Array<T, M>, {N / M}> = [Self::Array<T, M>; N / M]
     where
         [(); N / M]:;
 
@@ -67,46 +67,46 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
 
     fn fill<F>(fill: F) -> Self
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct;
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct;
     fn rfill<F>(fill: F) -> Self
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct;
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct;
 
     fn for_each<F>(self, action: F) -> ()
     where
-        F: ~const FnMut(T) -> () + ~const Destruct;
+        F: /*~const*/ FnMut(T) -> () + /*~const*/ Destruct;
     fn for_each_ref<F>(&self, action: F) -> ()
     where
-        F: ~const FnMut(&T) -> () + ~const Destruct;
+        F: /*~const*/ FnMut(&T) -> () + /*~const*/ Destruct;
     fn for_each_mut<F>(&mut self, action: F) -> ()
     where
-        F: ~const FnMut(&mut T) -> () + ~const Destruct;
+        F: /*~const*/ FnMut(&mut T) -> () + /*~const*/ Destruct;
     
     fn truncate<const M: usize>(self) -> Self::Resized<M>
     where
-        T: ~const Destruct,
+        T: /*~const*/ Destruct,
         [(); N - M]:;
     fn rtruncate<const M: usize>(self) -> Self::Resized<M>
     where
-        T: ~const Destruct,
+        T: /*~const*/ Destruct,
         [(); N - M]:;
 
     fn resize<const M: usize, F>(self, fill: F) -> Self::Resized<M>
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
-        T: ~const Destruct;
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
+        T: /*~const*/ Destruct;
     fn rresize<const M: usize, F>(self, fill: F) -> Self::Resized<M>
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
-        T: ~const Destruct;
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
+        T: /*~const*/ Destruct;
 
     fn extend<const M: usize, F>(self, fill: F) -> Self::Resized<M>
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
         [(); M - N]:;
     fn rextend<const M: usize, F>(self, fill: F) -> Self::Resized<M>
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
         [(); M - N]:;
 
     fn reformulate_length<const M: usize>(self) -> Self::Resized<M>
@@ -190,24 +190,24 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// use array_trait::*;
     /// 
     /// const A: [u8; 4] = [1, 2, 3, 4];
-    /// const B: [i8; 4] = A.map2(const |b| -(b as i8));
+    /// const B: [i8; 4] = A.map2(/*const*/ |b| -(b as i8));
     /// 
     /// assert_eq!(B, [-1, -2, -3, -4]);
     /// ```
     fn map2<Map>(self, map: Map) -> Self::Mapped<Map>
     where
-        Map: ~const FnMut<(T,)> + ~const Destruct;
+        Map: /*~const*/ FnMut<(T,)> + /*~const*/ Destruct;
     fn map_outer<Map>(&self, map: Map) -> Self::MappedTo<Self::MappedTo<<Map as FnOnce<(T, T)>>::Output>>
     where
-        Map: ~const FnMut<(T, T)> + ~const Destruct,
+        Map: /*~const*/ FnMut<(T, T)> + /*~const*/ Destruct,
         T: Copy;
     fn comap<Map, Rhs>(self, rhs: [Rhs; N], map: Map) -> Self::MappedTo<Map::Output>
     where
-        Map: ~const FnMut<(T, Rhs)> + ~const Destruct;
+        Map: /*~const*/ FnMut<(T, Rhs)> + /*~const*/ Destruct;
     fn comap_outer<Map, Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>, map: Map)
         -> Self::MappedTo<Self::Array<<Map as FnOnce<(T, Rhs)>>::Output, M>>
     where
-        Map: ~const FnMut<(T, Rhs)> + ~const Destruct,
+        Map: /*~const*/ FnMut<(T, Rhs)> + /*~const*/ Destruct,
         T: Copy,
         Rhs: Copy;
 
@@ -238,7 +238,7 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
 
     fn diagonal<const H: usize, const W: usize>(self) -> Self::Array<Self::Resized<W>, H>
     where
-        T: ~const Default + Copy,
+        T: /*~const*/ Default + Copy,
         [(); H - N]:,
         [(); W - N]:;
     
@@ -258,7 +258,7 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     fn differentiate(self) -> Self::Differentiated
     where
         [(); N.saturating_sub(1)]:,
-        T: ~const Sub<T> + Copy;
+        T: /*~const*/ Sub<T> + Copy;
     
     /// Integrates array (discrete calculus)
     /// 
@@ -273,11 +273,11 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// ```
     fn integrate(self) -> Self
     where
-        T: ~const AddAssign<T> + Copy;
+        T: /*~const*/ AddAssign<T> + Copy;
 
     fn integrate_from<const M: usize>(self, x0: T) -> Self::Resized<M>
     where
-        T: ~const AddAssign<T> + Copy;
+        T: /*~const*/ AddAssign<T> + Copy;
 
     /// Reduces elements in array into one element, using a given operand
     /// 
@@ -296,111 +296,111 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// ```
     fn reduce<R>(self, reduce: R) -> Option<T>
     where
-        R: ~const FnMut(T, T) -> T + ~const Destruct;
+        R: /*~const*/ FnMut(T, T) -> T + /*~const*/ Destruct;
 
     fn try_sum(self) -> Option<T>
     where
-        T: ~const AddAssign;
+        T: /*~const*/ AddAssign;
         
     fn sum_from<S>(self, from: S) -> S
     where
-        S: ~const AddAssign<T>;
+        S: /*~const*/ AddAssign<T>;
         
     fn try_product(self) -> Option<T>
     where
-        T: ~const MulAssign;
+        T: /*~const*/ MulAssign;
         
     fn product_from<P>(self, from: P) -> P
     where
-        P: ~const MulAssign<T>;
+        P: /*~const*/ MulAssign<T>;
 
     fn max(self) -> Option<T>
     where
-        T: ~const Ord;
+        T: /*~const*/ Ord;
         
     fn min(self) -> Option<T>
     where
-        T: ~const Ord;
+        T: /*~const*/ Ord;
         
     fn first_max(self) -> Option<T>
     where
-        T: ~const PartialOrd<T>;
+        T: /*~const*/ PartialOrd<T>;
         
     fn first_min(self) -> Option<T>
     where
-        T: ~const PartialOrd<T>;
+        T: /*~const*/ PartialOrd<T>;
         
     fn argmax(self) -> Option<usize>
     where
-        T: ~const PartialOrd<T>;
+        T: /*~const*/ PartialOrd<T>;
         
     fn argmin(self) -> Option<usize>
     where
-        T: ~const PartialOrd<T>;
+        T: /*~const*/ PartialOrd<T>;
         
     fn all(&self) -> bool
     where
-        T: ~const Into<bool> + Copy;
+        T: /*~const*/ Into<bool> + Copy;
     fn any(&self) -> bool
     where
-        T: ~const Into<bool> + Copy;
+        T: /*~const*/ Into<bool> + Copy;
 
     fn eq2<Rhs>(&self, rhs: &[Rhs]) -> bool
     where
-        T: ~const PartialEq<Rhs>;
+        T: /*~const*/ PartialEq<Rhs>;
 
     fn add_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Add<Rhs>>::Output>
     where
-        T: ~const Add<Rhs>,
+        T: /*~const*/ Add<Rhs>,
         Rhs: Copy;
     fn sub_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Sub<Rhs>>::Output>
     where
-        T: ~const Sub<Rhs>,
+        T: /*~const*/ Sub<Rhs>,
         Rhs: Copy;
     fn mul_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Mul<Rhs>>::Output>
     where
-        T: ~const Mul<Rhs>,
+        T: /*~const*/ Mul<Rhs>,
         Rhs: Copy;
     fn div_all<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<T as Div<Rhs>>::Output>
     where
-        T: ~const Div<Rhs>,
+        T: /*~const*/ Div<Rhs>,
         Rhs: Copy;
         
     fn add_all_neg<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Sub<T>>::Output>
     where
-        Rhs: Copy + ~const Sub<T>;
+        Rhs: Copy + /*~const*/ Sub<T>;
     fn mul_all_inv<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Div<T>>::Output>
     where
-        Rhs: Copy + ~const Div<T>;
+        Rhs: Copy + /*~const*/ Div<T>;
     
     fn neg_all(self) -> [<T as Neg>::Output; N]
     where
-        T: ~const Neg;
+        T: /*~const*/ Neg;
     
     fn add_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Add<Rhs>>::Output>
     where
-        T: ~const Add<Rhs>;
+        T: /*~const*/ Add<Rhs>;
     fn sub_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Sub<Rhs>>::Output>
     where
-        T: ~const Sub<Rhs>;
+        T: /*~const*/ Sub<Rhs>;
     fn mul_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Mul<Rhs>>::Output>
     where
-        T: ~const Mul<Rhs>;
+        T: /*~const*/ Mul<Rhs>;
     fn div_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Self::MappedTo<<T as Div<Rhs>>::Output>
     where
-        T: ~const Div<Rhs>;
+        T: /*~const*/ Div<Rhs>;
 
     fn try_mul_dot<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Option<<T as Mul<Rhs>>::Output>
     where
-        T: ~const Mul<Rhs, Output: ~const AddAssign>;
+        T: /*~const*/ Mul<Rhs, Output: /*~const*/ AddAssign>;
 
     fn mul_dot_bias<Rhs>(self, rhs: Self::MappedTo<Rhs>, bias: <T as Mul<Rhs>>::Output) -> <T as Mul<Rhs>>::Output
     where
-        T: ~const Mul<Rhs, Output: ~const AddAssign>;
+        T: /*~const*/ Mul<Rhs, Output: /*~const*/ AddAssign>;
 
     fn mul_outer<Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>) -> Self::MappedTo<Self::Array<<T as Mul<Rhs>>::Output, M>>
     where
-        T: ~const Mul<Rhs> + Copy,
+        T: /*~const*/ Mul<Rhs> + Copy,
         Rhs: Copy;
         
     /// Computes the general cross-product of the two arrays (as if vectors, in the mathematical sense).
@@ -421,12 +421,12 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
     /// ```
     fn mul_cross<Rhs>(&self, rhs: [&Self::MappedTo<Rhs>; N - 2]) -> Self::MappedTo<<T as Sub>::Output>
     where
-        T: ~const MulAssign<Rhs> + ~const Sub + Copy,
+        T: /*~const*/ MulAssign<Rhs> + /*~const*/ Sub + Copy,
         Rhs: Copy;
 
     fn try_magnitude_squared(self) -> Option<<T as Mul<T>>::Output>
     where
-        T: ~const Mul<T, Output: ~const AddAssign> + Copy;
+        T: /*~const*/ Mul<T, Output: /*~const*/ AddAssign> + Copy;
 
     /// Chains two arrays with the same item together.
     /// 
@@ -901,13 +901,13 @@ pub trait ArrayOps<T, const N: usize>: ArrayPrereq + IntoIterator<Item = T>
 
     fn each_ref2<B>(&self) -> Self::MappedTo<&B>
     where
-        T: ~const Borrow<B>;
+        T: /*~const*/ Borrow<B>;
     fn each_mut2<B>(&mut self) -> Self::MappedTo<&mut B>
     where
-        T: ~const BorrowMut<B>;
+        T: /*~const*/ BorrowMut<B>;
 }
 
-impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
+impl<T, const N: usize> /*const*/ ArrayOps<T, N> for [T; N]
 {
     type Array<I, const M: usize> = [I; M];
     
@@ -955,7 +955,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn fill<F>(mut fill: F) -> Self
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct
     {
         let mut array = MaybeUninit::uninit_array();
         let mut i = 0;
@@ -968,7 +968,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn rfill<F>(mut fill: F) -> Self
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct
     {
         let mut array = MaybeUninit::uninit_array();
         if N != 0
@@ -989,14 +989,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn for_each<F>(self, mut action: F) -> ()
     where
-        F: ~const FnMut(T) -> () + ~const Destruct
+        F: /*~const*/ FnMut(T) -> () + /*~const*/ Destruct
     {
-        self.for_each_ref(const |x| action(unsafe {(x as *const T).read()}));
+        self.for_each_ref(/*const*/ |x| action(unsafe {(x as *const T).read()}));
         core::mem::forget(self)
     }
     fn for_each_ref<F>(&self, mut action: F) -> ()
     where
-        F: ~const FnMut(&T) -> () + ~const Destruct
+        F: /*~const*/ FnMut(&T) -> () + /*~const*/ Destruct
     {
         let mut iter = self.const_iter();
         while let Some(next) = iter.next()
@@ -1006,7 +1006,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn for_each_mut<F>(&mut self, mut action: F) -> ()
     where
-        F: ~const FnMut(&mut T) -> () + ~const Destruct
+        F: /*~const*/ FnMut(&mut T) -> () + /*~const*/ Destruct
     {
         let mut iter = self.const_iter_mut();
         while let Some(next) = iter.next()
@@ -1017,14 +1017,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn truncate<const M: usize>(self) -> [T; M]
     where
-        T: ~const Destruct,
+        T: /*~const*/ Destruct,
         [(); N - M]:
     {
         self.split_array().0
     }
     fn rtruncate<const M: usize>(self) -> [T; M]
     where
-        T: ~const Destruct,
+        T: /*~const*/ Destruct,
         [(); N - M]:
     {
         self.rsplit_array().1
@@ -1032,8 +1032,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn resize<const M: usize, F>(self, mut fill: F) -> [T; M]
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
-        T: ~const Destruct
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
+        T: /*~const*/ Destruct
     {
         let mut array = unsafe {private::uninit()};
         let mut ptr = &mut array as *mut T;
@@ -1052,8 +1052,8 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn rresize<const M: usize, F>(self, mut fill: F) -> [T; M]
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
-        T: ~const Destruct
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
+        T: /*~const*/ Destruct
     {
         let mut array = unsafe {private::uninit()};
         let mut ptr = unsafe {(&mut array as *mut T).add(M.saturating_sub(N))};
@@ -1316,15 +1316,15 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn extend<const M: usize, F>(self, mut fill: F) -> [T; M]
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
         [(); M - N]:
     {
-        let filled: [T; M - N] = ArrayOps::fill(const move |i| fill(i + N));
+        let filled: [T; M - N] = ArrayOps::fill(/*const*/ move |i| fill(i + N));
         unsafe {private::merge_transmute(self, filled)}
     }
     fn rextend<const M: usize, F>(self, fill: F) -> [T; M]
     where
-        F: ~const FnMut(usize) -> T + ~const Destruct,
+        F: /*~const*/ FnMut(usize) -> T + /*~const*/ Destruct,
         [(); M - N]:
     {
         let filled: [T; M - N] = ArrayOps::fill(fill);
@@ -1411,11 +1411,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn map2<Map>(self, mut map: Map) -> [Map::Output; N]
     where
-        Map: ~const FnMut<(T,)> + ~const Destruct
+        Map: /*~const*/ FnMut<(T,)> + /*~const*/ Destruct
     {
         let ptr = &self as *const T;
 
-        let dst = ArrayOps::fill(const |i| unsafe {
+        let dst = ArrayOps::fill(/*const*/ |i| unsafe {
             map(ptr.add(i).read())
         });
 
@@ -1425,7 +1425,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn map_outer<Map>(&self, map: Map) -> [[Map::Output; N]; N]
     where
-        Map: ~const FnMut<(T, T)> + ~const Destruct,
+        Map: /*~const*/ FnMut<(T, T)> + /*~const*/ Destruct,
         T: Copy
     {
         self.comap_outer(self, map)
@@ -1433,12 +1433,12 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn comap<Map, Rhs>(self, rhs: [Rhs; N], mut map: Map) -> [Map::Output; N]
     where
-        Map: ~const FnMut<(T, Rhs)> + ~const Destruct
+        Map: /*~const*/ FnMut<(T, Rhs)> + /*~const*/ Destruct
     {
         let ptr0 = &self as *const T;
         let ptr1 = &rhs as *const Rhs;
 
-        let dst = ArrayOps::fill(const |i| unsafe {
+        let dst = ArrayOps::fill(/*const*/ |i| unsafe {
             map(
                 ptr0.add(i).read(),
                 ptr1.add(i).read()
@@ -1452,16 +1452,16 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn comap_outer<Map, Rhs, const M: usize>(&self, rhs: &[Rhs; M], mut map: Map) -> [[Map::Output; M]; N]
     where
-        Map: ~const FnMut<(T, Rhs)> + ~const Destruct,
+        Map: /*~const*/ FnMut<(T, Rhs)> + /*~const*/ Destruct,
         T: Copy,
         Rhs: Copy
     {
-        self.map2(const |x| rhs.map2(const |y| map(x, y)))
+        self.map2(/*const*/ |x| rhs.map2(/*const*/ |y| map(x, y)))
     }
     
     fn zip2<Z>(self, other: Self::Array<Z, N>) -> [(T, Z); N]
     {
-        self.comap(other, const |x, y| (x, y))
+        self.comap(other, /*const*/ |x, y| (x, y))
     }
     
     fn zip_outer<Z, const M: usize>(&self, other: &Self::Array<Z, M>) -> Self::MappedTo<Self::Array<(T, Z), M>>
@@ -1469,14 +1469,14 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         T: Copy,
         Z: Copy
     {
-        self.comap_outer(other, const |x, y| (x, y))
+        self.comap_outer(other, /*const*/ |x, y| (x, y))
     }
     
     fn enumerate(self) -> [(usize, T); N]
     {
         let ptr = &self as *const T;
 
-        let dst = ArrayOps::fill(const |i| unsafe {
+        let dst = ArrayOps::fill(/*const*/ |i| unsafe {
             (i, ptr.add(i).read())
         });
 
@@ -1487,7 +1487,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn diagonal<const H: usize, const W: usize>(self) -> Self::Array<Self::Resized<W>, H>
     where
-        T: ~const Default,
+        T: /*~const*/ Default,
         [(); H - N]:,
         [(); W - N]:
     {
@@ -1496,7 +1496,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         
         let ptr = self.as_ptr();
         
-        let dst = ArrayOps::fill(const |i| ArrayOps::fill(const |j| if i == j
+        let dst = ArrayOps::fill(/*const*/ |i| ArrayOps::fill(/*const*/ |j| if i == j
             {
                 unsafe {
                     ptr.add(i).read()
@@ -1516,11 +1516,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     fn differentiate(self) -> [<T as Sub<T>>::Output; N.saturating_sub(1)]
     where
         [(); N.saturating_sub(1)]:,
-        T: ~const Sub<T> + Copy + ~const Destruct
+        T: /*~const*/ Sub<T> + Copy + /*~const*/ Destruct
     {
         if let Some(&(mut x_prev)) = self.first()
         {
-            ArrayOps::fill(const move |i| {
+            ArrayOps::fill(/*const*/ move |i| {
                 let x = self[i + 1];
                 let dx = x - x_prev;
                 x_prev = x;
@@ -1535,11 +1535,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn integrate(self) -> Self
         where
-            T: ~const AddAssign<T> + Copy + ~const Destruct
+            T: /*~const*/ AddAssign<T> + Copy + /*~const*/ Destruct
     {
         if let Some(&(mut x_accum)) = self.first()
         {
-            ArrayOps::fill(const move |i| {
+            ArrayOps::fill(/*const*/ move |i| {
                 let xi = x_accum;
                 if let Some(&x) = self.get(i + 1)
                 {
@@ -1557,11 +1557,11 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn integrate_from<const M: usize>(self, x0: T) -> [T; M]
     where
-        T: ~const AddAssign<T> + Copy + ~const Destruct
+        T: /*~const*/ AddAssign<T> + Copy + /*~const*/ Destruct
     {
         let mut x_accum = x0;
 
-        ArrayOps::fill(const move |i| {
+        ArrayOps::fill(/*const*/ move |i| {
             let xi = x_accum;
             if let Some(&x) = self.get(i)
             {
@@ -1573,7 +1573,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn reduce<R>(self, mut reduce: R) -> Option<T>
     where
-        R: ~const FnMut(T, T) -> T + ~const Destruct
+        R: /*~const*/ FnMut(T, T) -> T + /*~const*/ Destruct
     {
         let this = ManuallyDrop::new(self);
         if N == 0
@@ -1595,7 +1595,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         
     fn try_sum(self) -> Option<T>
     where
-        T: ~const AddAssign
+        T: /*~const*/ AddAssign
     {
         let mut iter = ManuallyDrop::new(self.into_const_iter());
 
@@ -1621,7 +1621,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn sum_from<S>(self, from: S) -> S
     where
-        S: ~const AddAssign<T>
+        S: /*~const*/ AddAssign<T>
     {
         let mut iter = ManuallyDrop::new(self.into_const_iter());
 
@@ -1640,7 +1640,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         
     fn try_product(self) -> Option<T>
     where
-        T: ~const MulAssign
+        T: /*~const*/ MulAssign
     {
         let mut iter = ManuallyDrop::new(self.into_const_iter());
 
@@ -1666,7 +1666,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn product_from<P>(self, from: P) -> P
     where
-        P: ~const MulAssign<T>
+        P: /*~const*/ MulAssign<T>
     {
         let mut iter = ManuallyDrop::new(self.into_const_iter());
 
@@ -1685,53 +1685,53 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn max(self) -> Option<T>
     where
-        T: ~const Ord
+        T: /*~const*/ Ord
     {
         self.reduce(T::max)
     }
         
     fn min(self) -> Option<T>
     where
-        T: ~const Ord
+        T: /*~const*/ Ord
     {
         self.reduce(T::min)
     }
     
     fn first_max(self) -> Option<T>
     where
-        T: ~const PartialOrd<T>
+        T: /*~const*/ PartialOrd<T>
     {
-        self.reduce(const |a, b| if a >= b {a} else {b})
+        self.reduce(/*const*/ |a, b| if a >= b {a} else {b})
     }
         
     fn first_min(self) -> Option<T>
     where
-        T: ~const PartialOrd<T>
+        T: /*~const*/ PartialOrd<T>
     {
-        self.reduce(const |a, b| if a <= b {a} else {b})
+        self.reduce(/*const*/ |a, b| if a <= b {a} else {b})
     }
     
     fn argmax(self) -> Option<usize>
     where
-        T: ~const PartialOrd<T>
+        T: /*~const*/ PartialOrd<T>
     {
         self.enumerate()
-            .reduce(const |a, b| if a.1 >= b.1 {a} else {b})
-            .map(const |(i, _)| i)
+            .reduce(/*const*/ |a, b| if a.1 >= b.1 {a} else {b})
+            .map(/*const*/ |(i, _)| i)
     }
         
     fn argmin(self) -> Option<usize>
     where
-        T: ~const PartialOrd<T>
+        T: /*~const*/ PartialOrd<T>
     {
         self.enumerate()
-            .reduce(const |a, b| if a.1 <= b.1 {a} else {b})
-            .map(const |(i, _)| i)
+            .reduce(/*const*/ |a, b| if a.1 <= b.1 {a} else {b})
+            .map(/*const*/ |(i, _)| i)
     }
 
     fn all(&self) -> bool
     where
-        T: ~const Into<bool> + Copy
+        T: /*~const*/ Into<bool> + Copy
     {
         let mut iter = ManuallyDrop::new(self.const_iter());
 
@@ -1748,7 +1748,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn any(&self) -> bool
     where
-        T: ~const Into<bool> + Copy
+        T: /*~const*/ Into<bool> + Copy
     {
         let mut iter = ManuallyDrop::new(self.const_iter());
 
@@ -1765,7 +1765,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn eq2<Rhs>(&self, rhs: &[Rhs]) -> bool
     where
-        T: ~const PartialEq<Rhs>
+        T: /*~const*/ PartialEq<Rhs>
     {
         if N != rhs.len()
         {
@@ -1789,95 +1789,95 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn add_all<Rhs>(self, rhs: Rhs) -> [<T as Add<Rhs>>::Output; N]
     where
-        T: ~const Add<Rhs>,
+        T: /*~const*/ Add<Rhs>,
         Rhs: Copy
     {
-        self.map2(const |x| x + rhs)
+        self.map2(/*const*/ |x| x + rhs)
     }
     fn sub_all<Rhs>(self, rhs: Rhs) -> [<T as Sub<Rhs>>::Output; N]
     where
-        T: ~const Sub<Rhs>,
+        T: /*~const*/ Sub<Rhs>,
         Rhs: Copy
     {
-        self.map2(const |x| x - rhs)
+        self.map2(/*const*/ |x| x - rhs)
     }
     fn mul_all<Rhs>(self, rhs: Rhs) ->  [<T as Mul<Rhs>>::Output; N]
     where
-        T: ~const Mul<Rhs>,
+        T: /*~const*/ Mul<Rhs>,
         Rhs: Copy
     {
-        self.map2(const |x| x*rhs)
+        self.map2(/*const*/ |x| x*rhs)
     }
     fn div_all<Rhs>(self, rhs: Rhs) -> [<T as Div<Rhs>>::Output; N]
     where
-        T: ~const Div<Rhs>,
+        T: /*~const*/ Div<Rhs>,
         Rhs: Copy
     {
-        self.map2(const |x| x/rhs)
+        self.map2(/*const*/ |x| x/rhs)
     }
     
     fn add_all_neg<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Sub<T>>::Output>
     where
-        Rhs: Copy + ~const Sub<T>
+        Rhs: Copy + /*~const*/ Sub<T>
     {
-        self.map2(const |x| rhs - x)
+        self.map2(/*const*/ |x| rhs - x)
     }
     fn mul_all_inv<Rhs>(self, rhs: Rhs) -> Self::MappedTo<<Rhs as Div<T>>::Output>
     where
-        Rhs: Copy + ~const Div<T>
+        Rhs: Copy + /*~const*/ Div<T>
     {
-        self.map2(const |x| rhs/x)
+        self.map2(/*const*/ |x| rhs/x)
     }
     
     fn neg_all(self) -> [<T as Neg>::Output; N]
     where
-        T: ~const Neg
+        T: /*~const*/ Neg
     {
         self.map2(Neg::neg)
     }
     
     fn add_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Add<Rhs>>::Output; N]
     where
-        T: ~const Add<Rhs>
+        T: /*~const*/ Add<Rhs>
     {
         self.comap(rhs, Add::add)
     }
     fn sub_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Sub<Rhs>>::Output; N]
     where
-        T: ~const Sub<Rhs>
+        T: /*~const*/ Sub<Rhs>
     {
         self.comap(rhs, Sub::sub)
     }
     fn mul_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Mul<Rhs>>::Output; N]
     where
-        T: ~const Mul<Rhs>
+        T: /*~const*/ Mul<Rhs>
     {
         self.comap(rhs, Mul::mul)
     }
     fn div_each<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> [<T as Div<Rhs>>::Output; N]
     where
-        T: ~const Div<Rhs>
+        T: /*~const*/ Div<Rhs>
     {
         self.comap(rhs, Div::div)
     }
 
     fn try_mul_dot<Rhs>(self, rhs: Self::MappedTo<Rhs>) -> Option<<T as Mul<Rhs>>::Output>
     where
-        T: ~const Mul<Rhs, Output: ~const AddAssign>
+        T: /*~const*/ Mul<Rhs, Output: /*~const*/ AddAssign>
     {
         self.mul_each(rhs).try_sum()
     }
     
     fn mul_dot_bias<Rhs>(self, rhs: Self::MappedTo<Rhs>, bias: <T as Mul<Rhs>>::Output) -> <T as Mul<Rhs>>::Output
     where
-        T: ~const Mul<Rhs, Output: ~const AddAssign>
+        T: /*~const*/ Mul<Rhs, Output: /*~const*/ AddAssign>
     {
         self.mul_each(rhs).sum_from(bias)
     }
 
     fn mul_outer<Rhs, const M: usize>(&self, rhs: &Self::Array<Rhs, M>) -> [[<T as Mul<Rhs>>::Output; M]; N]
     where
-        T: ~const Mul<Rhs> + Copy,
+        T: /*~const*/ Mul<Rhs> + Copy,
         Rhs: Copy
     {
         self.comap_outer(rhs, Mul::mul)
@@ -1885,10 +1885,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn mul_cross<Rhs>(&self, rhs: [&Self::MappedTo<Rhs>; N - 2]) -> Self::MappedTo<<T as Sub>::Output>
     where
-        T: ~const MulAssign<Rhs> + ~const Sub + Copy,
+        T: /*~const*/ MulAssign<Rhs> + /*~const*/ Sub + Copy,
         Rhs: Copy
     {
-        ArrayOps::fill(const move |i| {
+        ArrayOps::fill(/*const*/ move |i| {
             let mut m_p = self[(i + 1) % N];
             let mut m_m = self[(i + (N - 1)) % N];
 
@@ -1907,7 +1907,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     
     fn try_magnitude_squared(self) -> Option<<T as Mul<T>>::Output>
     where
-        T: ~const Mul<T, Output: ~const AddAssign> + Copy
+        T: /*~const*/ Mul<T, Output: /*~const*/ AddAssign> + Copy
     {
         self.try_mul_dot(self)
     }
@@ -1944,7 +1944,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let (mut left, right) = self.rsplit_ptr::<false>(N % M);
 
         unsafe {(
-            ArrayOps::fill(const |_| {
+            ArrayOps::fill(/*const*/ |_| {
                 let slice = &*left.cast();
                 left = left.add(1);
                 slice
@@ -1960,7 +1960,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
         let (mut left, right) = self.rsplit_mut_ptr::<false>(N % M);
 
         unsafe {(
-            ArrayOps::fill(const |_| {
+            ArrayOps::fill(/*const*/ |_| {
                 let slice = &mut *left.cast();
                 left = left.add(1);
                 slice
@@ -1992,7 +1992,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
         unsafe {(
             &*left.cast(),
-            ArrayOps::fill(const |_| {
+            ArrayOps::fill(/*const*/ |_| {
                 let slice = &*right.cast();
                 right = right.add(1);
                 slice
@@ -2008,7 +2008,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
         unsafe {(
             &mut *left.cast(),
-            ArrayOps::fill(const |_| {
+            ArrayOps::fill(/*const*/ |_| {
                 let slice = &mut *right.cast();
                 right = right.add(1);
                 slice
@@ -2033,7 +2033,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut ptr = self as *const T;
         
-        ArrayOps::fill(const |_| {
+        ArrayOps::fill(/*const*/ |_| {
             let slice = unsafe {&*ptr.cast()};
             ptr = unsafe {ptr.add(1)};
             slice
@@ -2046,7 +2046,7 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     {
         let mut ptr = self as *mut T;
         
-        ArrayOps::fill(const |_| {
+        ArrayOps::fill(/*const*/ |_| {
             let slice = unsafe {&mut *ptr.cast()};
             ptr = unsafe {ptr.add(1)};
             slice
@@ -2149,10 +2149,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
 
     fn each_ref2<B>(&self) -> [&B; N]
     where
-        T: ~const Borrow<B>
+        T: /*~const*/ Borrow<B>
     {
         let mut ptr = self as *const T;
-        ArrayOps::fill(const |_| {
+        ArrayOps::fill(/*const*/ |_| {
             let y = unsafe {&*ptr}.borrow();
             ptr = unsafe {ptr.add(1)};
             y
@@ -2160,10 +2160,10 @@ impl<T, const N: usize> const ArrayOps<T, N> for [T; N]
     }
     fn each_mut2<B>(&mut self) -> [&mut B; N]
     where
-        T: ~const BorrowMut<B>
+        T: /*~const*/ BorrowMut<B>
     {
         let mut ptr = self as *mut T;
-        ArrayOps::fill(const |_| {
+        ArrayOps::fill(/*const*/ |_| {
             let y = unsafe {&mut *ptr}.borrow_mut();
             ptr = unsafe {ptr.add(1)};
             y

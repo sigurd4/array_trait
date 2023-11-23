@@ -3,57 +3,27 @@
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(maybe_uninit_uninit_array)]
-#![feature(const_maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_array_assume_init)]
-#![feature(const_maybe_uninit_assume_init)]
-#![feature(const_maybe_uninit_array_assume_init)]
-#![feature(const_swap)]
 #![feature(associated_const_equality)]
-#![feature(const_option)]
 #![feature(associated_type_defaults)]
 #![feature(trait_alias)]
 #![feature(unboxed_closures)]
-#![feature(concat_idents)]
-#![feature(decl_macro)]
 #![feature(generic_arg_infer)]
-#![feature(const_replace)]
-#![feature(const_deref)]
 #![feature(const_refs_to_cell)]
-#![feature(const_slice_index)]
-#![feature(const_ptr_read)]
-#![feature(const_ptr_write)]
-#![feature(transmutability)]
-#![feature(const_maybe_uninit_as_mut_ptr)]
-#![feature(const_option_ext)]
-#![feature(const_borrow)]
-#![feature(const_transmute_copy)]
 #![feature(associated_type_bounds)]
-#![feature(slice_from_ptr_range)]
-#![feature(const_slice_from_mut_ptr_range)]
-#![feature(const_slice_from_ptr_range)]
-#![feature(auto_traits)]
-#![feature(negative_impls)]
-#![feature(tuple_trait)]
-#![feature(const_cmp)]
-#![feature(const_slice_from_raw_parts_mut)]
-#![feature(const_slice_split_at_not_mut)]
-#![feature(const_slice_split_at_mut)]
 
 #![feature(generic_const_exprs)]
-#![feature(adt_const_params)]
-#![feature(const_closures)]
-#![feature(inherent_associated_types)]
 
 moddef::moddef!(
     flat(pub) mod {
         array,
-        array_nd,
+        //array_nd,
 
         array_ops,
         array_nd_ops,
         array_2d_ops,
 
-        partitioned_array,
+        //partitioned_array,
         //partitioned_array_ops,
 
         slice_ops,
@@ -103,7 +73,7 @@ mod private
             }
         }
         
-        pub const fn unpack_mandrop(self) -> (ManuallyDrop<L>, ManuallyDrop<R>)
+        pub /*const*/ fn unpack_mandrop(self) -> (ManuallyDrop<L>, ManuallyDrop<R>)
         {
             unsafe {
                 let mut left_right: (ManuallyDrop<L>, ManuallyDrop<R>) = uninit();
@@ -145,7 +115,7 @@ mod private
 
     use core::{mem::{ManuallyDrop, MaybeUninit}, ops::DerefMut};
 
-    use crate::{IntoConstIter, PartitionedArray};
+    use crate::{IntoConstIter};
 
     #[const_trait]
     pub trait Array {}
@@ -157,9 +127,9 @@ mod private
     impl<L, R> NotTuple for Pair<L, R> {}
     impl<T, const N: usize> NotTuple for [T; N] {}
     impl<T, const N: usize, const DIR: bool, const ENUMERATE: bool> NotTuple for IntoConstIter<T, N, DIR, ENUMERATE> {}
-    impl<T, const P: &'static [usize]> NotTuple for PartitionedArray<T, P>
+    /*impl<T, const P: &'static [usize]> NotTuple for PartitionedArray<T, P>
     where
-        [(); crate::sum_len::<{P}>()]: {}
+        [(); crate::sum_len::<{P}>()]: {}*/
 
     pub(crate) const unsafe fn uninit<T>() -> T
     {
@@ -213,20 +183,20 @@ mod private
 }
 
 pub trait SlicePrereq<T> = ?Sized
-+ ~const Index<usize, Output = <[T] as Index<usize>>::Output>
-+ ~const Index<Range<usize>, Output = <[T] as Index<Range<usize>>>::Output>
-+ ~const Index<RangeInclusive<usize>, Output = <[T] as Index<RangeInclusive<usize>>>::Output>
-+ ~const Index<RangeFrom<usize>, Output = <[T] as Index<RangeFrom<usize>>>::Output>
-+ ~const Index<RangeTo<usize>, Output = <[T] as Index<RangeTo<usize>>>::Output>
-+ ~const Index<RangeToInclusive<usize>, Output = <[T] as Index<RangeToInclusive<usize>>>::Output>
-+ ~const Index<RangeFull, Output = <[T] as Index<RangeFull>>::Output>
-+ ~const IndexMut<usize>
-+ ~const IndexMut<Range<usize>>
-+ ~const IndexMut<RangeInclusive<usize>>
-+ ~const IndexMut<RangeFrom<usize>>
-+ ~const IndexMut<RangeTo<usize>>
-+ ~const IndexMut<RangeToInclusive<usize>>
-+ ~const IndexMut<RangeFull>;
++ /*~const*/ Index<usize, Output = <[T] as Index<usize>>::Output>
++ /*~const*/ Index<Range<usize>, Output = <[T] as Index<Range<usize>>>::Output>
++ /*~const*/ Index<RangeInclusive<usize>, Output = <[T] as Index<RangeInclusive<usize>>>::Output>
++ /*~const*/ Index<RangeFrom<usize>, Output = <[T] as Index<RangeFrom<usize>>>::Output>
++ /*~const*/ Index<RangeTo<usize>, Output = <[T] as Index<RangeTo<usize>>>::Output>
++ /*~const*/ Index<RangeToInclusive<usize>, Output = <[T] as Index<RangeToInclusive<usize>>>::Output>
++ /*~const*/ Index<RangeFull, Output = <[T] as Index<RangeFull>>::Output>
++ /*~const*/ IndexMut<usize>
++ /*~const*/ IndexMut<Range<usize>>
++ /*~const*/ IndexMut<RangeInclusive<usize>>
++ /*~const*/ IndexMut<RangeFrom<usize>>
++ /*~const*/ IndexMut<RangeTo<usize>>
++ /*~const*/ IndexMut<RangeToInclusive<usize>>
++ /*~const*/ IndexMut<RangeFull>;
 
 pub trait ArrayPrereq = Sized
 + IntoIterator
@@ -251,7 +221,7 @@ mod tests {
         println!("{:?}", c);
     }
 
-    #[test]
+    /*#[test]
     fn gpa()
     {
         #[repr(u8)]
@@ -325,9 +295,9 @@ mod tests {
             /GRADES_VGS.len() as f32;
             
         println!("{}", GPA_VGS);
-    }
+    }*/
 
-    #[test]
+    /*#[test]
     fn benchmark()
     {
         const N: usize = 64;
@@ -355,9 +325,9 @@ mod tests {
         }
         let t = t0.elapsed().unwrap();
         println!("t = {:?}", t); //10.5832ms
-    }
+    }*/
 
-    #[test]
+    /*#[test]
     fn reduce()
     {
         const A: [[(u8, u8); 3]; 2] = [
@@ -368,7 +338,7 @@ mod tests {
         let r: (u8, u8) = A.reduce_nd(|(a1, a2), (b1, b2)| (a1 + b1, a2 + b2)).unwrap();
         
         assert_eq!(r, (3, 6));
-    }
+    }*/
 
     #[test]
     fn rotate()
@@ -423,7 +393,7 @@ mod tests {
         );
     }
 
-    #[test]
+    /*#[test]
     fn nd_test()
     {
         type T = u8;
@@ -440,7 +410,7 @@ mod tests {
 
         const FLAT_T: [T; 9] = ND_T.flatten_nd_array();
         assert_eq!(FLAT_T, [1, 4, 7, 2, 5, 8, 3, 6, 9]);
-    }
+    }*/
 
     #[test]
     fn generate_impl_nd_array_macro_args()

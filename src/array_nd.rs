@@ -2,7 +2,7 @@ use super::*;
 
 use core::{mem::ManuallyDrop, ops::{Deref, DerefMut}};
 
-#[const_trait]
+//#[const_trait]
 pub trait ArrayNd<const N: usize>: private::Array + ArrayPrereq
 {
     const DIMENSIONS: [usize; N];
@@ -60,19 +60,19 @@ macro_rules! index_nd {
 
 macro_rules! impl_nd_array {
     ($a:ident $($($b:ident)+)?) => {
-        impl<T, const $a: usize $($(, const $b: usize)+)?> const ArrayNd<{count!{$a $($($b)+)?}}> for nd!{T; $a $($($b)+)?}
+        impl<T, const $a: usize $($(, const $b: usize)+)?> /*const*/ ArrayNd<{count!{$a $($($b)+)?}}> for nd!{T; $a $($($b)+)?}
         {
             const DIMENSIONS: [usize; count!{$a $($($b)+)?}] = [$a $($(, $b)+)?];
             const FLAT_LENGTH: usize = flat_len!{$a $($($b)+)?};
             type ItemNd = T;
         }
-        impl<T, const $a: usize $($(, const $b: usize)+)?> const ArrayNdOps<{count!{$a $($($b)+)?}}, T, {flat_len!{$a $($($b)+)?}}> for nd!{T; $a $($($b)+)?}
+        impl<T, const $a: usize $($(, const $b: usize)+)?> /*const*/ ArrayNdOps<{count!{$a $($($b)+)?}}, T, {flat_len!{$a $($($b)+)?}}> for nd!{T; $a $($($b)+)?}
         {
             type Mapped<M> = nd!{M; $a $($($b)+)?};
 
             fn fill_nd<F>(mut fill: F) -> Self
             where
-                F: ~const FnMut([usize; count!{$a $($($b)+)?}]) -> T + ~const Destruct
+                F: /*~const*/ FnMut([usize; count!{$a $($($b)+)?}]) -> T + /*~const*/ Destruct
             {
                 let dims: [usize; {count!{$a $($($b)+)?}}] = Self::DIMENSIONS;
                 let mut i = [0; {count!{$a $($($b)+)?}}];
@@ -89,7 +89,7 @@ macro_rules! impl_nd_array {
 
             fn map_nd<M>(self, mut map: M) -> Self::Mapped<<M as FnOnce<(T,)>>::Output>
             where
-                M: ~const FnMut<(T,)> + ~const Destruct
+                M: /*~const*/ FnMut<(T,)> + /*~const*/ Destruct
             {
                 let mut iter = ManuallyDrop::new(self.flatten_nd_array().into_const_iter());
                 ArrayNdOps::fill_nd(const |_| map(iter.deref_mut().next().unwrap()))
@@ -124,7 +124,7 @@ macro_rules! impl_nd_array {
             
             fn each_ref_nd<B>(&self) -> Self::Mapped<&B>
             where
-                T: ~const Borrow<B>
+                T: /*~const*/ Borrow<B>
             {
                 let mut ptr = unsafe {core::mem::transmute::<_, *const T>(self)};
                 ArrayNdOps::fill_nd(const |_| {
@@ -135,7 +135,7 @@ macro_rules! impl_nd_array {
             }
             fn each_mut_nd<B>(&mut self) -> Self::Mapped<&mut B>
             where
-                T: ~const BorrowMut<B>
+                T: /*~const*/ BorrowMut<B>
             {
                 let mut ptr = unsafe {core::mem::transmute::<_, *mut T>(self)};
                 ArrayNdOps::fill_nd(const |_| {
@@ -147,8 +147,8 @@ macro_rules! impl_nd_array {
             
             fn reduce_nd<R>(self, mut reduce: R) -> Option<T>
             where
-                R: ~const FnMut(T, T) -> T + ~const Destruct,
-                T: ~const Destruct
+                R: /*~const*/ FnMut(T, T) -> T + /*~const*/ Destruct,
+                T: /*~const*/ Destruct
             {
                 let this = ManuallyDrop::new(self);
                 if flat_len!{$a $($($b)+)?} == 0

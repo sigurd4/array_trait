@@ -10,3 +10,4 @@ repository = "https://github.com/sigurd4/array_trait"
 
 [dependencies]
 moddef = "0.2.2"
+slice_trait = {path = "../slice_trait"}

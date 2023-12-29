@@ -48,9 +48,7 @@ pub trait Array: private::Array + ArrayPrereq
     /// In this case, the compiler does not automatically know that the type with the [Array](Array)-trait is an actual array.
     /// This method lets you tell the compiler that you are now working with an actual array, and not just something
     /// which implements the trait [Array](Array).
-    fn into_array<const N: usize>(self) -> [Self::Item; N]
-    where
-        Self: Array<LENGTH = {N}>;
+    fn into_array(self) -> [Self::Item; Self::LENGTH];
 
     /// Returns self as an array-slice
     /// 
@@ -60,9 +58,7 @@ pub trait Array: private::Array + ArrayPrereq
     /// In this case, the compiler does not automatically know that the type with the [Array](Array)-trait is an actual array.
     /// This method lets you tell the compiler that you are now working with an actual array, and not just something
     /// which implements the trait [Array](Array).
-    fn as_array<const N: usize>(&self) -> &[Self::Item; N]
-    where
-        Self: Array<LENGTH = {N}>;
+    fn as_array(&self) -> &[Self::Item; Self::LENGTH];
     
     /// Returns self as a mutable array-slice
     /// 
@@ -72,30 +68,24 @@ pub trait Array: private::Array + ArrayPrereq
     /// In this case, the compiler does not automatically know that the type with the [Array](Array)-trait is an actual array.
     /// This method lets you tell the compiler that you are now working with an actual array, and not just something
     /// which implements the trait [Array](Array).
-    fn as_array_mut<const N: usize>(&mut self) -> &mut [Self::Item; N]
-    where
-        Self: Array<LENGTH = {N}>;
+    fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH];
 }
 
 impl<Item, const LENGTH: usize> const Array for [Item; LENGTH]
 {
     const LENGTH: usize = LENGTH;
 
-    fn into_array<const N: usize>(self) -> [Self::Item;  N]
-    where
-        Self: Array<LENGTH = {N}>
+    fn into_array(self) -> [Self::Item; Self::LENGTH]
     {
-        unsafe {private::transmute_unchecked_size(self)}
+        let array = unsafe {core::mem::transmute_copy(&self)};
+        core::mem::forget(self);
+        array
     }
-    fn as_array<const N: usize>(&self) -> &[Self::Item; N]
-    where
-        Self: Array<LENGTH = {N}>
+    fn as_array(&self) -> &[Self::Item; Self::LENGTH]
     {
         unsafe {core::mem::transmute(self)}
     }
-    fn as_array_mut<const N: usize>(&mut self) -> &mut [Self::Item; N]
-    where
-        Self: Array<LENGTH = {N}>
+    fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH]
     {
         unsafe {core::mem::transmute(self)}
     }

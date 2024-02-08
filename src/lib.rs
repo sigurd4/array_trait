@@ -8,7 +8,7 @@
 moddef::moddef!(
     flat(pub) mod {
         array,
-        array_nd,
+        array_nd
     }
 );
 

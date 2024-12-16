@@ -25,7 +25,6 @@ use super::*;
 /// // `DIMENSIONS` contains the lengths of each dimension ordered outermost to innermost.
 /// assert_eq!(<Mat2x3 as ArrayNd<DEPTH>>::DIMENSIONS, [2, 3]);
 /// ```
-
 pub trait ArrayNd<const DEPTH: usize>: Array
 {
     /// The dimensions of the n-dimensional containing the lengths of each level of array from outermost to innermost

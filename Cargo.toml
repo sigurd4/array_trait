@@ -3,6 +3,8 @@ name = "array_trait"
 version = "1.0.2"
 edition = "2021"
 license = "MIT"
+keywords = ["array", "util", "trait"]
+categories = ["rust-patterns", "no-std::no-alloc"]
 description = "A generic trait for any array, with item as type and length as const parameter"
 repository = "https://github.com/sigurd4/array_trait"
 

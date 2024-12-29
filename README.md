@@ -16,6 +16,8 @@
 
 A trait for any array, with item as an associated type, and length as an assiciated constant.
 
+This crate is a subset of the crate [`array_ops`](https://crates.io/crates/array_ops).
+
 ## Examples
 
 ```rust

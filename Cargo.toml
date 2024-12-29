@@ -12,4 +12,4 @@ repository = "https://github.com/sigurd4/array_trait"
 
 [dependencies]
 moddef = "0.2.6"
-slice_trait = "0.1.3"
+slice_trait = "0.1.5"

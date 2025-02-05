@@ -29,7 +29,7 @@ use super::*;
 /// assert_eq!(Arr3::LENGTH, A.len());
 /// ```
 #[const_trait]
-pub trait Array: private::Array + ArrayPrereq<Item: Sized> + ~const AsArray + ~const IntoArray
+pub trait Array: private::Array + ArrayPrereq<Item = <Self as AsSlice>::Item> + ~const AsArray + ~const IntoArray
 /*where
     for<'a> &'a Self: TryFrom<&'a [Self::Item]>
         + IntoIterator<Item = &'a Self::Item, IntoIter = Iter<'a, Self::Item>>,

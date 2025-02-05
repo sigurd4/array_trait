@@ -88,7 +88,9 @@ pub use slice_trait::*;
 
 mod private
 {
-    pub trait Array {}
+    use crate::AsArray;
+
+    pub trait Array: AsArray {}
     impl<Item, const LENGTH: usize> Array for [Item; LENGTH] {}
 }
 

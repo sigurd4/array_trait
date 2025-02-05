@@ -99,12 +99,12 @@ impl<T, const N: usize> const AsArray for alloc::boxed::Box<[T; N]>
 
     fn as_array(&self) -> &[Self::Item; Self::LENGTH]
     {
-        let a: &[T; N] = &**self;
+        let a: &[T; N] = self;
         unsafe {core::mem::transmute(a)}
     }
     fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH]
     {
-        let a: &mut [T; N] = &mut **self;
+        let a: &mut [T; N] = self;
         unsafe {core::mem::transmute(a)}
     }
 }

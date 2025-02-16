@@ -1,7 +1,7 @@
 
 use super::*;
 
-/// A trait for any array, with item as an associated type, and length as an assiciated constant.
+/// A trait for any array, with elem as an associated type, and length as an assiciated constant.
 ///
 /// # Example
 ///
@@ -16,7 +16,7 @@ use super::*;
 /// const A: Arr3 = [1, 2, 3];
 /// 
 /// /// The trait can be used in a function like this:
-/// const fn first<'a, T: ~const Array>(array: &'a T) -> Option<&'a <T as AsSlice>::Item>
+/// const fn first<'a, T: ~const Array>(array: &'a T) -> Option<&'a <T as AsSlice>::Elem>
 /// where
 ///     [(); T::LENGTH]: // This is required for now.
 /// {
@@ -29,16 +29,16 @@ use super::*;
 /// assert_eq!(Arr3::LENGTH, A.len());
 /// ```
 #[const_trait]
-pub trait Array: private::Array + ArrayPrereq<<Self as AsSlice>::Item> + ~const AsArray + ~const IntoArray
+pub trait Array: private::Array + ArrayPrereq<<Self as AsSlice>::Elem> + ~const AsArray + ~const IntoArray
 /*where
-    for<'a> &'a Self: TryFrom<&'a [Self::Item]>
-        + IntoIterator<Item = &'a Self::Item, IntoIter = Iter<'a, Self::Item>>,
-    for<'a> &'a mut Self: TryFrom<&'a mut [Self::Item]> + IntoIterator<Item = &'a mut Self::Item, IntoIter = IterMut<'a, Self::Item>>*/
+    for<'a> &'a Self: TryFrom<&'a [Self::Elem]>
+        + IntoIterator<Elem = &'a Self::Elem, IntoIter = Iter<'a, Self::Elem>>,
+    for<'a> &'a mut Self: TryFrom<&'a mut [Self::Elem]> + IntoIterator<Elem = &'a mut Self::Elem, IntoIter = IterMut<'a, Self::Elem>>*/
 {
     
 }
 
-impl<Item, const LENGTH: usize> const Array for [Item; LENGTH]
+impl<T, const LENGTH: usize> const Array for [T; LENGTH]
 {
     
 }
@@ -56,7 +56,7 @@ mod test
         const A: Arr3 = [1, 2, 3];
 
         /// The trait can be used in a function like this:
-        const fn first<'a, T: ~const Array>(array: &'a T) -> Option<&'a <T as AsSlice>::Item>
+        const fn first<'a, T: ~const Array>(array: &'a T) -> Option<&'a <T as AsSlice>::Elem>
         where
             [(); T::LENGTH]: // This is required for now.
         {

@@ -31,7 +31,7 @@ pub trait ArrayNd<const DEPTH: usize>: Array
     const DIMENSIONS: [usize; DEPTH];
     /// The product of the lengths of each dimension.
     const FLAT_LENGTH: usize;
-    type ItemNd;
+    type ElemNd;
 }
 
 macro_rules! count {
@@ -62,7 +62,7 @@ macro_rules! impl_nd_array {
         {
             const DIMENSIONS: [usize; count!{$a $($($b)+)?}] = [$a $($(, $b)+)?];
             const FLAT_LENGTH: usize = flat_len!{$a $($($b)+)?};
-            type ItemNd = T;
+            type ElemNd = T;
         }
         $(impl_nd_array!($($b)+);)?
     };

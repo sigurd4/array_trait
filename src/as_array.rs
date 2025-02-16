@@ -28,7 +28,7 @@ pub trait AsArray: ~const AsSlice
     /// 
     /// use array_trait::*;
     /// 
-    /// fn first_half<T: Array>(array: T) -> [<T as core::iter::IntoIterator>::Item; T::LENGTH/2]
+    /// fn first_half<T: Array>(array: T) -> [<T as core::iter::IntoIterator>::Elem; T::LENGTH/2]
     /// {
     ///     array.into_iter().array_chunks().next().unwrap()
     /// }
@@ -45,7 +45,7 @@ pub trait AsArray: ~const AsSlice
     /// In this case, the compiler does not automatically know that the type with the [Array](Array)-trait is an actual array.
     /// This method lets you tell the compiler that you are now working with an actual array, and not just something
     /// which implements the trait [Array](Array).
-    fn as_array(&self) -> &[Self::Item; Self::LENGTH];
+    fn as_array(&self) -> &[Self::Elem; Self::LENGTH];
     
     /// Returns self as a mutable array-slice
     /// 
@@ -55,18 +55,18 @@ pub trait AsArray: ~const AsSlice
     /// In this case, the compiler does not automatically know that the type with the [Array](Array)-trait is an actual array.
     /// This method lets you tell the compiler that you are now working with an actual array, and not just something
     /// which implements the trait [Array](Array).
-    fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH];
+    fn as_array_mut(&mut self) -> &mut [Self::Elem; Self::LENGTH];
 }
 
 impl<T, const LENGTH: usize> const AsArray for [T; LENGTH]
 {
     const LENGTH: usize = LENGTH;
 
-    fn as_array(&self) -> &[Self::Item; Self::LENGTH]
+    fn as_array(&self) -> &[Self::Elem; Self::LENGTH]
     {
         unsafe {core::mem::transmute(self)}
     }
-    fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH]
+    fn as_array_mut(&mut self) -> &mut [Self::Elem; Self::LENGTH]
     {
         unsafe {core::mem::transmute(self)}
     }
@@ -80,12 +80,12 @@ where
 {
     const LENGTH: usize = N;
 
-    fn as_array(&self) -> &[Self::Item; N]
+    fn as_array(&self) -> &[Self::Elem; N]
     {
         let arr = (**self).as_array();
         unsafe {core::mem::transmute(arr)}
     }
-    fn as_array_mut(&mut self) -> &mut [Self::Item; N]
+    fn as_array_mut(&mut self) -> &mut [Self::Elem; N]
     {
         let arr = (**self).as_array_mut();
         unsafe {core::mem::transmute(arr)}
@@ -97,12 +97,12 @@ impl<T, const N: usize> const AsArray for alloc::boxed::Box<[T; N]>
 {
     const LENGTH: usize = N;
 
-    fn as_array(&self) -> &[Self::Item; Self::LENGTH]
+    fn as_array(&self) -> &[Self::Elem; Self::LENGTH]
     {
         let a: &[T; N] = self;
         unsafe {core::mem::transmute(a)}
     }
-    fn as_array_mut(&mut self) -> &mut [Self::Item; Self::LENGTH]
+    fn as_array_mut(&mut self) -> &mut [Self::Elem; Self::LENGTH]
     {
         let a: &mut [T; N] = self;
         unsafe {core::mem::transmute(a)}

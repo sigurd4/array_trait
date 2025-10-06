@@ -28,7 +28,7 @@ pub trait AsArray: ~const AsSlice
     /// 
     /// use array_trait::*;
     /// 
-    /// fn first_half<T: Array>(array: T) -> [<T as core::iter::IntoIterator>::Elem; T::LENGTH/2]
+    /// fn first_half<T: Array>(array: T) -> [<T as AsSlice>::Elem; T::LENGTH/2]
     /// {
     ///     array.into_iter().array_chunks().next().unwrap()
     /// }

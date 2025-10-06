@@ -34,7 +34,7 @@
 //! const A: Arr3 = [1, 2, 3];
 //!
 //! /// The trait can be used in a function like this:
-//! const fn first<'a, T: ~const Array>(array: &'a T) -> Option<&'a <T as AsSlice>::Item>
+//! const fn first<'a, T: ~const Array>(array: &'a T) -> Option<&'a <T as AsSlice>::Elem>
 //! where
 //!     [(); T::LENGTH]: // This is required for now.
 //! {

@@ -1,4 +1,6 @@
 
+use core::ptr::Pointee;
+
 use super::*;
 
 /// A trait for any array, with elem as an associated type, and length as an assiciated constant.
@@ -29,7 +31,7 @@ use super::*;
 /// assert_eq!(Arr3::LENGTH, A.len());
 /// ```
 #[const_trait]
-pub trait Array: private::Array + ArrayPrereq<<Self as AsSlice>::Elem> + ~const AsArray + ~const IntoArray
+pub trait Array: private::Array + ArrayPrereq<<Self as AsSlice>::Elem> + ~const AsArray + ~const IntoArray + Pointee<Metadata = ()>
 /*where
     for<'a> &'a Self: TryFrom<&'a [Self::Elem]>
         + IntoIterator<Elem = &'a Self::Elem, IntoIter = Iter<'a, Self::Elem>>,

@@ -1,9 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(const_trait_impl)]
 #![feature(trait_alias)]
-#![feature(associated_const_equality)]
 #![feature(generic_const_exprs)]
-#![recursion_limit = "256"]
+#![feature(ptr_metadata)]
 
 //! A trait for any array, with item as an associated type, and length as an assiciated constant.
 //!

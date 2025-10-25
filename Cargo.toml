@@ -16,4 +16,4 @@ alloc = ["slice_trait/alloc"]
 
 [dependencies]
 moddef = "0.3.0"
-slice_trait = "0.2.3"
+slice_trait = "0.2.4"

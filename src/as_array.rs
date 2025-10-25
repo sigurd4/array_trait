@@ -73,22 +73,22 @@ impl<T, const LENGTH: usize> const AsArray for [T; LENGTH]
 }
 
 /*#[cfg(feature = "alloc")]
-impl<T, const N: usize> const AsArray for alloc::boxed::Box<T>
+impl<T> const AsArray for alloc::boxed::Box<T>
 where
-    T: ~const AsArray<LENGTH = {N}>,
+    T: ~const AsArray,
     [(); T::LENGTH]:
 {
-    const LENGTH: usize = N;
+    const LENGTH: usize = T::LENGTH;
 
-    fn as_array(&self) -> &[Self::Elem; N]
+    fn as_array(&self) -> &[Self::Elem; Self::LENGTH]
     {
         let arr = (**self).as_array();
-        unsafe {core::mem::transmute(arr)}
+        arr
     }
-    fn as_array_mut(&mut self) -> &mut [Self::Elem; N]
+    fn as_array_mut(&self) -> &[Self::Elem; Self::LENGTH]
     {
         let arr = (**self).as_array_mut();
-        unsafe {core::mem::transmute(arr)}
+        arr
     }
 }*/
 

@@ -1,6 +1,9 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(const_trait_impl)]
 #![feature(trait_alias)]
+#![feature(associated_const_equality)]
+#![feature(const_convert)]
+#![feature(const_index)]
 #![feature(generic_const_exprs)]
 #![feature(ptr_metadata)]
 
@@ -75,8 +78,7 @@ moddef::moddef!(
         array,
         array_nd,
         into_array,
-        as_array,
-        prereq
+        as_array
     }
 );
 

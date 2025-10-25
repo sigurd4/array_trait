@@ -1,5 +1,5 @@
 
-use core::ptr::Pointee;
+use core::{borrow::{Borrow, BorrowMut}, ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive}};
 
 use super::*;
 
@@ -31,7 +31,19 @@ use super::*;
 /// assert_eq!(Arr3::LENGTH, A.len());
 /// ```
 #[const_trait]
-pub trait Array: private::Array + ArrayPrereq<<Self as AsSlice>::Elem> + ~const AsArray + ~const IntoArray + Pointee<Metadata = ()>
+pub trait Array: private::Array + ~const AsArray + ~const IntoArray + Pointee<Metadata = ()>
+    + IntoIterator<Item = <Self as AsSlice>::Elem>
+    + ~const AsRef<[<Self as AsSlice>::Elem]>
+    + ~const AsMut<[<Self as AsSlice>::Elem]>
+    + ~const Borrow<[<Self as AsSlice>::Elem]>
+    + ~const BorrowMut<[<Self as AsSlice>::Elem]>
+    + ~const IndexMut<usize, Output = <[<Self as AsSlice>::Elem] as Index<usize>>::Output>
+    + ~const IndexMut<Range<usize>, Output = <[<Self as AsSlice>::Elem] as Index<Range<usize>>>::Output>
+    + ~const IndexMut<RangeInclusive<usize>, Output = <[<Self as AsSlice>::Elem] as Index<RangeInclusive<usize>>>::Output>
+    + ~const IndexMut<RangeFrom<usize>, Output = <[<Self as AsSlice>::Elem] as Index<RangeFrom<usize>>>::Output>
+    + ~const IndexMut<RangeTo<usize>, Output = <[<Self as AsSlice>::Elem] as Index<RangeTo<usize>>>::Output>
+    + ~const IndexMut<RangeToInclusive<usize>, Output = <[<Self as AsSlice>::Elem] as Index<RangeToInclusive<usize>>>::Output>
+    + ~const IndexMut<RangeFull, Output = <[<Self as AsSlice>::Elem] as Index<RangeFull>>::Output>
 /*where
     for<'a> &'a Self: TryFrom<&'a [Self::Elem]>
         + IntoIterator<Elem = &'a Self::Elem, IntoIter = Iter<'a, Self::Elem>>,

@@ -1,7 +1,7 @@
 [package]
 name = "array_trait"
 version = "1.1.2"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 keywords = ["array", "util", "trait"]
 categories = ["rust-patterns", "no-std::no-alloc"]
@@ -16,4 +16,4 @@ alloc = ["slice_trait/alloc"]
 
 [dependencies]
 moddef = "0.3.0"
-slice_trait = "0.2.4"
+slice_trait = "0.2.5"

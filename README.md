@@ -1,8 +1,8 @@
 [![Build Status (nightly)](https://github.com/sigurd4/array_trait/workflows/Build-nightly/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/build-nightly.yml)
-<!--[![Build Status (nightly, all features)](https://github.com/sigurd4/array_trait/workflows/Build-nightly-all-features/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/build-nightly-all-features.yml)-->
+[![Build Status (nightly, all features)](https://github.com/sigurd4/array_trait/workflows/Build-nightly-all-features/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/build-nightly-all-features.yml)
 
 [![Build Status (stable)](https://github.com/sigurd4/array_trait/workflows/Build-stable/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/build-stable.yml)
-<!--[![Build Status (stable, all features)](https://github.com/sigurd4/array_trait/workflows/Build-stable-all-features/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/build-stable-all-features.yml)-->
+[![Build Status (stable, all features)](https://github.com/sigurd4/array_trait/workflows/Build-stable-all-features/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/build-stable-all-features.yml)
 
 [![Test Status](https://github.com/sigurd4/array_trait/workflows/Test/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/test.yml)
 [![Lint Status](https://github.com/sigurd4/array_trait/workflows/Lint/badge.svg)](https://github.com/sigurd4/array_trait/actions/workflows/lint.yml)

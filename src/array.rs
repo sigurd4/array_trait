@@ -1,5 +1,5 @@
 
-use core::{borrow::{Borrow, BorrowMut}, ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive}};
+use core::{borrow::{Borrow, BorrowMut}, ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive}, ptr::Pointee};
 
 use super::*;
 

@@ -1,7 +1,6 @@
 use slice_trait::AsSlice;
 
-#[const_trait]
-pub trait AsArray: ~const AsSlice
+pub const trait AsArray: ~const AsSlice
 {
     /// Length of array as compile-time constant
     /// 

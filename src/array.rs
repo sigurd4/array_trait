@@ -30,8 +30,7 @@ use super::*;
 /// assert_eq!(Arr3::LENGTH, 3);
 /// assert_eq!(Arr3::LENGTH, A.len());
 /// ```
-#[const_trait]
-pub trait Array: private::Array + ~const AsArray + ~const IntoArray + Pointee<Metadata = ()>
+pub const trait Array: private::Array + ~const AsArray + ~const IntoArray + Pointee<Metadata = ()>
     + IntoIterator<Item = <Self as AsSlice>::Elem>
     + ~const AsRef<[<Self as AsSlice>::Elem]>
     + ~const AsMut<[<Self as AsSlice>::Elem]>

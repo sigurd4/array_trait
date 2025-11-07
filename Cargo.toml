@@ -1,6 +1,6 @@
 [package]
 name = "array_trait"
-version = "1.1.9"
+version = "1.1.10"
 edition = "2024"
 license = "MIT"
 keywords = ["array", "util", "trait"]
@@ -18,4 +18,4 @@ same = ["slice_trait/same"]
 
 [dependencies]
 moddef = "0.3.0"
-slice_trait = "0.3.4"
+slice_trait = "0.3.5"

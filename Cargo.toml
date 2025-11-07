@@ -13,7 +13,9 @@ repository = "https://github.com/sigurd4/array_trait"
 [features]
 default = ["alloc"]
 alloc = ["slice_trait/alloc"]
+length = ["same", "slice_trait/length"]
+same = ["slice_trait/same"]
 
 [dependencies]
 moddef = "0.3.0"
-slice_trait = {version = "0.2.5", default-features = false}
+slice_trait = "0.3.0"

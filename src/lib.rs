@@ -4,8 +4,6 @@
 #![feature(const_convert)]
 #![feature(const_index)]
 #![feature(ptr_metadata)]
-#![feature(min_generic_const_args)]
-#![feature(inherent_associated_types)]
 #![feature(generic_const_exprs)]
 
 //! A trait for any array, with item as an associated type, and length as an assiciated constant.

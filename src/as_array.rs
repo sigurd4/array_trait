@@ -34,7 +34,6 @@ pub const trait AsArray: ~const AsSlice
     /// 
     /// assert_eq!(first_half([1.0, 2.0, 3.0, 4.0]), [1.0, 2.0]);
     /// ```
-    #[type_const]
     const LENGTH: usize;
 
     /// Returns self as an array-slice
@@ -60,7 +59,6 @@ pub const trait AsArray: ~const AsSlice
 
 impl<T, const LENGTH: usize> const AsArray for [T; LENGTH]
 {
-    #[type_const]
     const LENGTH: usize = LENGTH;
 
     fn as_array(&self) -> &[Self::Elem; Self::LENGTH]
@@ -96,7 +94,6 @@ where
 #[cfg(feature = "alloc")]
 impl<T, const N: usize> const AsArray for alloc::boxed::Box<[T; N]>
 {
-    #[type_const]
     const LENGTH: usize = N;
 
     fn as_array(&self) -> &[Self::Elem; Self::LENGTH]

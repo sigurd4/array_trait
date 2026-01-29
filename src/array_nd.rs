@@ -58,9 +58,9 @@ macro_rules! nd {
 
 macro_rules! impl_nd_array {
     ($a:ident $($($b:ident)+)?) => {
-        impl<T, const $a: usize $($(, const $b: usize)+)?> /*const*/ ArrayNd<const {count!{$a $($($b)+)?}}> for nd!{T; $a $($($b)+)?}
+        impl<T, const $a: usize $($(, const $b: usize)+)?> /*const*/ ArrayNd<{count!{$a $($($b)+)?}}> for nd!{T; $a $($($b)+)?}
         {
-            const DIMENSIONS: [usize; const {count!{$a $($($b)+)?}}] = [$a $($(, $b)+)?];
+            const DIMENSIONS: [usize; count!{$a $($($b)+)?}] = [$a $($(, $b)+)?];
             const FLAT_LENGTH: usize = flat_len!{$a $($($b)+)?};
             type ElemNd = T;
         }

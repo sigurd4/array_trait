@@ -1,6 +1,5 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(const_trait_impl)]
-#![feature(trait_alias)]
 #![feature(const_convert)]
 #![feature(const_index)]
 #![feature(ptr_metadata)]

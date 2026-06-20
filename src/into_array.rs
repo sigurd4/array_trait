@@ -1,7 +1,7 @@
 use crate::AsArray;
 
 #[cfg(not(feature = "alloc"))]
-pub const trait IntoArray: ~const AsArray
+pub const trait IntoArray: ~const AsArray + Sized
 {
     /// Returns self as an array
     /// 
@@ -24,7 +24,7 @@ pub const trait IntoArray: ~const AsArray + slice_trait::IntoBoxedSlice
     fn into_array(self) -> [Self::Elem; Self::LENGTH];
 }
 
-impl<T, const LENGTH: usize> const IntoArray for [T; LENGTH]
+const impl<T, const LENGTH: usize> IntoArray for [T; LENGTH]
 {
     fn into_array(self) -> [Self::Elem; Self::LENGTH]
     {

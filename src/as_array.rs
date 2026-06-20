@@ -48,7 +48,7 @@ pub const trait AsArray: ~const AsSlice
     
     /// Returns self as a mutable array-slice
     /// 
-    /// Similar to [Array::into_array](Array::into_array), but is passed by mutable reference.
+    /// Similar to [Array::into_array](crate::Array::into_array), but is passed by mutable reference.
     /// 
     /// Useful in the case where a trait is implemented using a generic bound to the [Array](Array) trait.
     /// In this case, the compiler does not automatically know that the type with the [Array](Array)-trait is an actual array.
@@ -57,7 +57,7 @@ pub const trait AsArray: ~const AsSlice
     fn as_array_mut(&mut self) -> &mut [Self::Elem; Self::LENGTH];
 }
 
-impl<T, const LENGTH: usize> const AsArray for [T; LENGTH]
+const impl<T, const LENGTH: usize> AsArray for [T; LENGTH]
 {
     const LENGTH: usize = LENGTH;
 
@@ -72,7 +72,7 @@ impl<T, const LENGTH: usize> const AsArray for [T; LENGTH]
 }
 
 /*#[cfg(feature = "alloc")]
-impl<T> const AsArray for alloc::boxed::Box<T>
+const impl<T> AsArray for alloc::boxed::Box<T>
 where
     T: ~const AsArray,
     [(); T::LENGTH]:
@@ -92,7 +92,7 @@ where
 }*/
 
 #[cfg(feature = "alloc")]
-impl<T, const N: usize> const AsArray for alloc::boxed::Box<[T; N]>
+const impl<T, const N: usize> AsArray for alloc::boxed::Box<[T; N]>
 {
     const LENGTH: usize = N;
 

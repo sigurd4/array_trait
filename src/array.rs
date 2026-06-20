@@ -51,7 +51,7 @@ pub const trait Array: private::Array + ~const AsArray + ~const IntoArray + Poin
     
 }
 
-impl<T, const LENGTH: usize> const Array for [T; LENGTH]
+const impl<T, const LENGTH: usize> Array for [T; LENGTH]
 {
     
 }
